@@ -1,0 +1,12 @@
+//
+// Created by jamiec on 9/27/22.
+//
+
+#ifndef CONTROLLER_DNNPADDING_H
+#define CONTROLLER_DNNPADDING_H
+
+#define DNN_HIGH_COMP_PADDING 0
+#define DNN_HIGH_COMM_PADDING 0
+#define DNN_LOW_COMP_PADDING 0
+
+#endif //CONTROLLER_DNNPADDING_H

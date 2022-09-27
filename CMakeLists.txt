@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.23)
+project(controller)
+
+set(CMAKE_CXX_STANDARD 20)
+
+find_package(cpprestsdk REQUIRED)
+find_package(Threads REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread log program_options chrono)
+
+add_executable(controller main.cpp controller/BasicController/BasicController.cpp controller/BasicController/BasicController.h controller/MasterController.cpp controller/MasterController.h utils/NetworkUtils/NetUtils.cpp utils/NetworkUtils/NetUtils.h utils/boost_imports.h utils/InterruptUtils.h utils/RuntimeUtils.h Services/ProcessOffloadRequest/ProcessOffloadRequest.cpp Services/ProcessOffloadRequest/ProcessOffloadRequest.h utils/LockList/LockList.cpp utils/LockList/LockList.h Services/DeviceRegister/RegisterDevices.cpp Services/DeviceRegister/RegisterDevices.h model/data_models/TaskQueue/TaskQueue.cpp model/data_models/TaskQueue/TaskQueue.h Constants/RequestTypes.h model/enums/RequestTypeEnum.h Services/WorkQueueManager/WorkQueueManager.cpp Services/WorkQueueManager/WorkQueueManager.h model/data_models/WorkItems/BaseWorkItem/WorkItem.cpp model/data_models/WorkItems/BaseWorkItem/WorkItem.h model/data_models/WorkItems/ProcessingItem/ProcessingItem.cpp model/data_models/WorkItems/ProcessingItem/ProcessingItem.h model/data_models/BaseDNNModel/BaseDNNModel.cpp model/data_models/BaseDNNModel/BaseDNNModel.h Constants/LayerType.h model/enums/LayerTypeEnum.h model/TileRegion/TileRegion.cpp model/TileRegion/TileRegion.h Constants/DNN_Type.h model/enums/DNN_Type_Enum.h Constants/RequestPaths.h model/data_models/WorkItems/DAGDisruptItem/DAGDisruption.cpp model/data_models/WorkItems/DAGDisruptItem/DAGDisruption.h model/data_models/ComputationDevice/ComputationDevice.cpp model/data_models/ComputationDevice/ComputationDevice.h model/data_models/LinkAct/LinkAct.cpp model/data_models/LinkAct/LinkAct.h model/data_models/Network/Network.cpp model/data_models/Network/Network.h Services/LowCompServices/LowCompServices.cpp Services/LowCompServices/LowCompServices.h Constants/DNNPadding.h model/data_models/BaseResult/BaseResult.cpp model/data_models/BaseResult/BaseResult.h model/data_models/Task/Task.cpp model/data_models/Task/Task.h model/data_models/TileRegion/TileRegion.cpp model/data_models/TileRegion/TileRegion.h)
+target_link_libraries(controller PRIVATE cpprestsdk::cpprest)
