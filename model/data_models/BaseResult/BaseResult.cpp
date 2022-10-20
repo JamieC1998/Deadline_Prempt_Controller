@@ -7,8 +7,8 @@
 namespace model {
     int BaseResult::dnnIdCounter = 0;
 
-    BaseResult::BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, time_t deadline,
-                           time_t estimatedStart, time_t estimatedFinish) : sourceDevId(sourceDevId), dnnType(dnnType),
+    BaseResult::BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, std::chrono::time_point<std::chrono::system_clock> deadline,
+                           std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish) : sourceDevId(sourceDevId), dnnType(dnnType),
                                                                             srcHost(srcHost), deadline(deadline),
                                                                             estimatedStart(estimatedStart),
                                                                             estimatedFinish(estimatedFinish), dnn_id(dnnIdCounter) { dnnIdCounter++; }
@@ -37,27 +37,27 @@ namespace model {
         BaseResult::srcHost = srcHost;
     }
 
-    time_t BaseResult::getDeadline() const {
+    std::chrono::time_point<std::chrono::system_clock> BaseResult::getDeadline() const {
         return deadline;
     }
 
-    void BaseResult::setDeadline(time_t deadline) {
+    void BaseResult::setDeadline(std::chrono::time_point<std::chrono::system_clock> deadline) {
         BaseResult::deadline = deadline;
     }
 
-    time_t BaseResult::getEstimatedStart() const {
+    std::chrono::time_point<std::chrono::system_clock> BaseResult::getEstimatedStart() const {
         return estimatedStart;
     }
 
-    void BaseResult::setEstimatedStart(time_t estimatedStart) {
+    void BaseResult::setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart) {
         BaseResult::estimatedStart = estimatedStart;
     }
 
-    time_t BaseResult::getEstimatedFinish() const {
+    std::chrono::time_point<std::chrono::system_clock> BaseResult::getEstimatedFinish() const {
         return estimatedFinish;
     }
 
-    void BaseResult::setEstimatedFinish(time_t estimatedFinish) {
+    void BaseResult::setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish) {
         BaseResult::estimatedFinish = estimatedFinish;
     }
 

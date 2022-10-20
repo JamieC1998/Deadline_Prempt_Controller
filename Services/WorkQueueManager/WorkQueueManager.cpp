@@ -4,10 +4,12 @@
 
 #include <thread>
 #include "WorkQueueManager.h"
+#include "../../Constants/CompNetCon.h"
 #include "../../model/data_models/WorkItems/DAGDisruptItem/DAGDisruption.h"
 #include "../../model/data_models/WorkItems/ProcessingItem/ProcessingItem.h"
-#include "../../model/data_models/ComputationDevice/ComputationDevice.h"
 #include "../LowCompServices/LowCompServices.h"
+#include "../../model/data_models/WorkItems/StateUpdate/StateUpdate.h"
+#include "../NetworkServices/NetworkServices.h"
 
 namespace services {
     std::atomic<int> WorkQueueManager::thread_counter = 0;
@@ -17,14 +19,88 @@ namespace services {
     }
 
     void WorkQueueManager::low_comp_allocation_call(model::WorkItem *item) {
-        auto* proc_item = reinterpret_cast<model::ProcessingItem*>(item);
+        auto *proc_item = reinterpret_cast<model::ProcessingItem *>(item);
 
         std::unique_lock<std::mutex> net_lock(network_lock);
         std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices = network->getDevices();
-        std::shared_ptr<model::ComputationDevice> comp_device = devices[reinterpret_cast<model::WorkItem*>(proc_item)->getHostList()[0]];
+        std::shared_ptr<std::vector<std::shared_ptr<model::LinkAct>>> copyList;
+        std::copy(network->getLink().begin(), network->getLink().end(), copyList->begin());
         net_lock.unlock();
 
-        std::pair<bool, std::pair<time_t, time_t>> result = services::allocate_task(item, comp_device);
+        //TODO IMPLEMENT PROPER BANDWIDTH
+        float bw = 1;
+        float latency = COMM_DELAY_MS;
+        float data_size_mb = 0.5;
+        std::map<std::string, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>> times;
+
+        for (auto name: *item->getHostList()) {
+            std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
+            std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> time_slot = services::findLinkSlot(
+                    currentTime, bw, latency, data_size_mb, copyList);
+            times[name] = time_slot;
+            copyList->push_back(std::make_shared<model::LinkAct>(*time_slot));
+
+            std::sort(copyList->begin(), copyList->end(),
+                      [](std::shared_ptr<model::LinkAct> a, std::shared_ptr<model::LinkAct> b) {
+
+                          return a->getStartFinTime().second < b->getStartFinTime().second;
+                      });
+        }
+
+        auto result = services::allocate_task(item, devices, times);
+
+        if (!result.first) {
+            auto workItem = new model::WorkItem(enums::request_type::halt_req);
+            WorkQueueManager::add_task(workItem);
+            auto newTask = new model::ProcessingItem(enums::request_type::low_complexity, item->getHostList(),
+                                                     proc_item->getAllocationInputData());
+            WorkQueueManager::add_task(reinterpret_cast<model::WorkItem *>(newTask));
+        } else {
+            for (auto &k_v: *result.second) {
+                auto *bR = new model::BaseResult(devices[k_v.first]->getId(), enums::dnn_type::low_comp,
+                                                 k_v.first, proc_item->getDeadline().at(k_v.first),
+                                                 k_v.second.first, k_v.second.second);
+
+                bR->tasks[0] = std::initializer_list<std::map<int, std::shared_ptr<model::Task>>::value_type>{};
+
+                //TODO UPDATE TILEMAP FROM LOOKUP
+                std::shared_ptr<model::Task> task = std::make_shared<model::Task>(bR->getDnnId(),
+                                                                                  enums::request_type::low_complexity,
+                                                                                  0, -1, 0,
+                                                                                  devices[k_v.first]->getId(),
+                                                                                  std::make_shared<model::TileRegion>(),
+                                                                                  std::make_shared<model::TileRegion>(),
+                                                                                  1,
+                                                                                  std::initializer_list<std::vector<int>>::value_type{
+                                                                                          0},
+                                                                                  proc_item->getAllocationInputData().at(
+                                                                                          k_v.first)->getRamReq()[0],
+                                                                                  proc_item->getAllocationInputData().at(
+                                                                                          k_v.first)->getStorageReq()[0],
+                                                                                  k_v.second.first,
+                                                                                  k_v.second.second,
+                                                                                  k_v.first,
+                                                                                  std::make_shared<model::LinkAct>(
+                                                                                          (true,
+                                                                                                  std::make_pair<int, int>(
+                                                                                                          -1,
+                                                                                                          devices[k_v.first]->getId()),
+                                                                                                  std::make_pair<std::string, std::string>(
+                                                                                                          std::string(
+                                                                                                                  "controller"),
+                                                                                                          std::string(
+                                                                                                                  k_v.first)),
+                                                                                                  data_size_mb,
+                                                                                                  (std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                                                                          times[k_v.first]->second -
+                                                                                                          times[k_v.first]->first)).count(),
+                                                                                                  *times[k_v.first])));
+                bR->tasks[0][0] = task;
+
+
+            }
+        }
+
         WorkQueueManager::thread_counter--;
     }
 
@@ -50,6 +126,15 @@ namespace services {
                     work_queue.erase(work_queue.begin() + i);
                     i--;
                     list_size;
+                } else if (WorkQueueManager::work_queue[i]->getRequestType() == enums::request_type::halt_req)
+                    return;
+            }
+        } else if (item->getRequestType() == enums::request_type::dag_disruption) {
+            int list_size = static_cast<int>(WorkQueueManager::work_queue.size());
+            for (int i = 0; i < list_size; i++) {
+                if (WorkQueueManager::work_queue[i]->getRequestType() == enums::request_type::halt_req ||
+                    WorkQueueManager::work_queue[i]->getRequestType() == enums::request_type::dag_disruption) {
+                    return;
                 }
             }
         }
@@ -57,8 +142,15 @@ namespace services {
         WorkQueueManager::work_queue.push_back(item);
 
         std::sort(work_queue.begin(), work_queue.end(),
-                  [](const model::WorkItem *a, const model::WorkItem *b) {
-                      return a->getRequestType() < b->getRequestType();
+                  [](model::WorkItem *a, model::WorkItem *b) {
+                      if (a->getRequestType() == enums::request_type::state_update &&
+                          b->getRequestType() == enums::request_type::state_update) {
+                          auto a_cast = reinterpret_cast<model::StateUpdate *>(a);
+                          auto b_cast = reinterpret_cast<model::StateUpdate *>(b);
+
+                          return a_cast->getTimestamp() < b_cast->getTimestamp();
+                      } else
+                          return a->getRequestType() < b->getRequestType();
                   });
 
     }
@@ -119,17 +211,17 @@ namespace services {
                     lk.unlock();
                 }
 
-                for(model::WorkItem* item: WorkQueueManager::work_queue){
-                    switch(item->getRequestType()){
+                for (model::WorkItem *item: WorkQueueManager::work_queue) {
+                    switch (item->getRequestType()) {
                         case enums::request_type::dag_disruption:
-                            delete(reinterpret_cast<model::DAGDisruption*> (item));
+                            delete (reinterpret_cast<model::DAGDisruption *> (item));
                             break;
                         case enums::request_type::low_complexity:
                         case enums::request_type::high_complexity:
-                            delete(reinterpret_cast<model::ProcessingItem*> (item));
+                            delete (reinterpret_cast<model::ProcessingItem *> (item));
                             break;
                         default:
-                            delete(item);
+                            delete (item);
                     }
                 }
             }

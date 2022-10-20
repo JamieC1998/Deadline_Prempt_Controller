@@ -24,11 +24,11 @@ namespace model {
 
         WorkItem(enums::request_type requestType, std::shared_ptr<std::vector<std::string>> hostList);
 
+        WorkItem(enums::request_type requestType);
+
         WorkItem();
 
-        const std::vector<std::string> &getHostList() const;
-
-        void setHostList(const std::vector<std::string> &hostList);
+        const std::shared_ptr<std::vector<std::string>> &getHostList() const;
 
     private:
         std::shared_ptr<std::vector<std::string>> host_list;

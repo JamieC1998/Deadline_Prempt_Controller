@@ -63,14 +63,18 @@ namespace model {
         host_name = hostName;
     }
 
-    const std::vector<std::shared_ptr<int>> &ComputationDevice::getTasks() const {
+    const std::vector<std::shared_ptr<Task>> &ComputationDevice::getTasks() const {
         return TASKS;
     }
 
-    void ComputationDevice::setTasks(const std::vector<std::shared_ptr<int>> &tasks) {
+    void ComputationDevice::setTasks(const std::vector<std::shared_ptr<Task>> &tasks) {
         TASKS = tasks;
     }
 
     ComputationDevice::ComputationDevice(int cores, float ram, float storage, const std::string &hostName) : cores(
             cores), ram(ram), storage(storage), host_name(hostName), id(id_counter){ id_counter++; }
+
+    int ComputationDevice::getId() const {
+        return id;
+    }
 } // model

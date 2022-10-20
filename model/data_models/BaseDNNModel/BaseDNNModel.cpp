@@ -53,14 +53,6 @@ namespace model {
         STORAGE_REQ = storageReq;
     }
 
-    const std::vector<std::time_t> &BaseDNNModel::getEstimatedProcTime() const {
-        return estimated_proc_time;
-    }
-
-    void BaseDNNModel::setEstimatedProcTime(const std::vector<std::time_t> &estimatedProcTime) {
-        estimated_proc_time = estimatedProcTime;
-    }
-
     enums::dnn_type BaseDNNModel::getType() const {
         return type;
     }
@@ -72,17 +64,21 @@ namespace model {
     BaseDNNModel::BaseDNNModel(int layerCount, enums::dnn_type type, std::vector<enums::LayerTypeEnum> layerType,
                                std::vector<TileRegion> inMaps, std::vector<TileRegion> outMaps,
                                std::vector<float> ramReq, std::vector<float> storageReq,
-                               std::vector<std::time_t> estimatedProcTime) : LAYER_COUNT(layerCount), type(type),
+                               std::vector<std::chrono::system_clock::duration> estimatedProcTime) : LAYER_COUNT(layerCount), type(type),
                                                                                     layer_type(std::move(layerType)),
                                                                                     in_maps(std::move(inMaps)), out_maps(std::move(outMaps)),
                                                                                     RAM_REQ(std::move(ramReq)),
                                                                                     STORAGE_REQ(std::move(storageReq)),
-                                                                                    estimated_proc_time(std::move(
-                                                                                            estimatedProcTime)), base_dnn_id(base_id_counter) {
+                                                                                    estimated_proc_time(std::move(estimatedProcTime)),
+                                                                                    base_dnn_id(base_id_counter) {
         base_id_counter++;
     }
 
     BaseDNNModel::BaseDNNModel() {
 
+    }
+
+    std::vector<std::chrono::system_clock::duration> BaseDNNModel::getEstimatedProcTime() const {
+        return estimated_proc_time;
     }
 } // model

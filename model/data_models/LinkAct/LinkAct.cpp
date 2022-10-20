@@ -8,12 +8,12 @@ namespace model {
     int LinkAct::link_activity_counter = 0;
 
     LinkAct::LinkAct(bool isMeta, const std::pair<int, int> &devIds,
-                     const std::pair<std::string, std::string> &hostNames, float dataSize, time_t transferTime,
-                     const std::pair<time_t, time_t> &startFinTime) : is_meta(isMeta), dev_ids(devIds),
+                     const std::pair<std::string, std::string> &hostNames, float dataSize, long transferTime,
+                     const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime) : is_meta(isMeta), dev_ids(devIds),
                                                                       host_names(hostNames), data_size(dataSize),
-                                                                      transfer_time(transferTime),
+                                                                      transfer_time_ms(transferTime),
                                                                       start_fin_time(startFinTime), link_activity_id(
-                    link_activity_counter) { link_activity_counter++ }
+                    link_activity_counter) { link_activity_counter++; }
 
     int LinkAct::getLinkActivityId() {
         return link_activity_id;
@@ -55,19 +55,25 @@ namespace model {
         data_size = dataSize;
     }
 
-    time_t LinkAct::getTransferTime() const {
-        return transfer_time;
+    long LinkAct::getTransferTime() const {
+        return transfer_time_ms;
     }
 
-    void LinkAct::setTransferTime(time_t transferTime) {
-        transfer_time = transferTime;
+    void LinkAct::setTransferTime(long transferTime) {
+        transfer_time_ms = transferTime;
     }
 
-    const std::pair<time_t, time_t> &LinkAct::getStartFinTime() const {
+    const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &LinkAct::getStartFinTime() const {
         return start_fin_time;
     }
 
-    void LinkAct::setStartFinTime(const std::pair<time_t, time_t> &startFinTime) {
+    void LinkAct::setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime) {
         start_fin_time = startFinTime;
     }
+
+    LinkAct::LinkAct() {}
+
+    LinkAct::LinkAct(
+            const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime)
+            : start_fin_time(startFinTime) {}
 } // model

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <vector>
+#include <chrono>
 #include "../../enums/RequestTypeEnum.h"
 #include "../TileRegion/TileRegion.h"
 #include "../LinkAct/LinkAct.h"
@@ -18,7 +19,7 @@ namespace model {
         Task(int dnnId, enums::request_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
              int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap, const std::shared_ptr<TileRegion> &outMap,
              int fusedTaskCount, const std::vector<int> &originalLayerIds, float maxRamReq, float maxStorageReq,
-             time_t estimatedStart, time_t estimatedFinish, const std::string &allocatedHost,
+             std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish, const std::string &allocatedHost,
              const std::shared_ptr<LinkAct> &comms);
 
         Task();
@@ -75,13 +76,13 @@ namespace model {
 
         void setMaxStorageReq(float maxStorageReq);
 
-        time_t getEstimatedStart() const;
+        std::chrono::time_point<std::chrono::system_clock> getEstimatedStart() const;
 
-        void setEstimatedStart(time_t estimatedStart);
+        void setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart);
 
-        time_t getEstimatedFinish() const;
+        std::chrono::time_point<std::chrono::system_clock> getEstimatedFinish() const;
 
-        void setEstimatedFinish(time_t estimatedFinish);
+        void setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
 
         const std::string &getAllocatedHost() const;
 
@@ -108,8 +109,8 @@ namespace model {
         float MAX_RAM_REQ;
         float MAX_STORAGE_REQ;
 
-        time_t estimated_start;
-        time_t estimated_finish;
+        std::chrono::time_point<std::chrono::system_clock> estimated_start;
+        std::chrono::time_point<std::chrono::system_clock> estimated_finish;
 
         std::string allocated_host;
 

@@ -8,7 +8,7 @@ namespace model {
     Task::Task(int dnnId, enums::request_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
                int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap,
                const std::shared_ptr<TileRegion> &outMap, int fusedTaskCount, const std::vector<int> &originalLayerIds,
-               float maxRamReq, float maxStorageReq, time_t estimatedStart, time_t estimatedFinish,
+               float maxRamReq, float maxStorageReq, std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish,
                const std::string &allocatedHost, const std::shared_ptr<LinkAct> &comms) : dnn_id(dnnId),
                                                                                           requestType(requestType),
                                                                                           group_block_id(groupBlockId),
@@ -140,19 +140,19 @@ namespace model {
         MAX_STORAGE_REQ = maxStorageReq;
     }
 
-    time_t Task::getEstimatedStart() const {
+    std::chrono::time_point<std::chrono::system_clock> Task::getEstimatedStart() const {
         return estimated_start;
     }
 
-    void Task::setEstimatedStart(time_t estimatedStart) {
+    void Task::setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart) {
         estimated_start = estimatedStart;
     }
 
-    time_t Task::getEstimatedFinish() const {
+    std::chrono::time_point<std::chrono::system_clock> Task::getEstimatedFinish() const {
         return estimated_finish;
     }
 
-    void Task::setEstimatedFinish(time_t estimatedFinish) {
+    void Task::setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish) {
         estimated_finish = estimatedFinish;
     }
 

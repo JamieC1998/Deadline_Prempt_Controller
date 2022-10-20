@@ -21,14 +21,15 @@ namespace model {
             requestType), host_list(std::move(hostList)), internal_id(
             internal_item_id_counter) { internal_item_id_counter++; }
 
-    WorkItem::WorkItem() {}
+    WorkItem::WorkItem(): internal_id(
+            internal_item_id_counter) { internal_item_id_counter++; }
 
-    const std::vector<std::string> &WorkItem::getHostList() const {
+    WorkItem::WorkItem(enums::request_type requestType) : requestType(
+            requestType), internal_id(
+            internal_item_id_counter) { internal_item_id_counter++; }
+
+    const std::shared_ptr<std::vector<std::string>> &WorkItem::getHostList() const {
         return host_list;
-    }
-
-    void WorkItem::setHostList(const std::vector<std::string> &hostList) {
-        host_list = hostList;
     }
 
 

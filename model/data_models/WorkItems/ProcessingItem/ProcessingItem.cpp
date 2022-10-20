@@ -23,4 +23,9 @@ namespace model {
     ProcessingItem::ProcessingItem(enums::request_type requestType, const std::shared_ptr<std::vector<std::string>> &hostList,
                                    std::map<std::string, std::shared_ptr<BaseDNNModel>> allocationInputData) : WorkItem(
             requestType, hostList), allocation_input_data(std::move(allocationInputData)) {}
+
+    const std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> &
+    ProcessingItem::getDeadline() const {
+        return deadline;
+    }
 } // model

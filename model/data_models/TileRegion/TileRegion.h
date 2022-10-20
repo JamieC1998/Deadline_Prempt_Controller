@@ -11,6 +11,8 @@ namespace model {
     public:
         TileRegion(int x1, int y1, int x2, int y2, int channelNumber);
 
+        TileRegion();
+
         int getX1() const;
 
         int getY1() const;

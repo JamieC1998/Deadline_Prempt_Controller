@@ -17,8 +17,8 @@ namespace model {
         static int dnnIdCounter;
 
     public:
-        BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, time_t deadline,
-                   time_t estimatedStart, time_t estimatedFinish);
+        BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, std::chrono::time_point<std::chrono::system_clock> deadline,
+                   std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
 
         int getSourceDevId() const;
 
@@ -32,32 +32,34 @@ namespace model {
 
         void setSrcHost(const std::string &srcHost);
 
-        time_t getDeadline() const;
+        std::chrono::time_point<std::chrono::system_clock> getDeadline() const;
 
-        void setDeadline(time_t deadline);
+        void setDeadline(std::chrono::time_point<std::chrono::system_clock> deadline);
 
-        time_t getEstimatedStart() const;
+        std::chrono::time_point<std::chrono::system_clock> getEstimatedStart() const;
 
-        void setEstimatedStart(time_t estimatedStart);
+        void setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart);
 
-        time_t getEstimatedFinish() const;
+        std::chrono::time_point<std::chrono::system_clock> getEstimatedFinish() const;
 
-        void setEstimatedFinish(time_t estimatedFinish);
+        void setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
 
         int getDnnId() const;
 
         void setDnnId(int dnnId);
 
+        std::map<int, std::map<int, std::shared_ptr<Task>>> tasks;
+
     private:
         int dnn_id;
         int sourceDevId;
+
         enums::dnn_type dnnType;
         std::string srcHost;
-        time_t deadline;
-        time_t estimatedStart;
-        time_t estimatedFinish;
+        std::chrono::time_point<std::chrono::system_clock> deadline;
+        std::chrono::time_point<std::chrono::system_clock> estimatedStart;
+        std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
         int block_count;
-        std::map<int, std::map<int, std::shared_ptr<Task>>> tasks;
     };
 
 } // model

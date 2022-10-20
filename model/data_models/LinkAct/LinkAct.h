@@ -7,6 +7,7 @@
 
 #include <utility>
 #include <string>
+#include <chrono>
 
 namespace model {
 
@@ -15,11 +16,16 @@ namespace model {
 
     public:
         LinkAct(bool isMeta, const std::pair<int, int> &devIds, const std::pair<std::string, std::string> &hostNames,
-                float dataSize, time_t transferTime, const std::pair<time_t, time_t> &startFinTime);
+                float dataSize, long transferTimeMs, const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
-        static int getLinkActivityId();
+        LinkAct();
 
-        static void setLinkActivityId(int linkActivityId);
+        explicit LinkAct(
+                const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+
+        int getLinkActivityId();
+
+        void setLinkActivityId(int linkActivityId);
 
         bool isMeta() const;
 
@@ -37,23 +43,23 @@ namespace model {
 
         void setDataSize(float dataSize);
 
-        time_t getTransferTime() const;
+        long getTransferTime() const;
 
-        void setTransferTime(time_t transferTime);
+        void setTransferTime(std::chrono::time_point<std::chrono::system_clock> transferTime);
 
-        const std::pair<time_t, time_t> &getStartFinTime() const;
+        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &getStartFinTime() const;
 
-        void setStartFinTime(const std::pair<time_t, time_t> &startFinTime);
+        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
     private:
-        int link_activity_id;
+        int link_activity_id = 0;
         bool is_meta;
         std::pair<int, int> dev_ids;
         std::pair<std::string, std::string> host_names;
 
         float data_size;
-        time_t transfer_time;
-        std::pair<time_t, time_t> start_fin_time;
+        long transfer_time_ms;
+        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
     };
 
 } // model

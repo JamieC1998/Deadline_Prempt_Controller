@@ -35,4 +35,6 @@ namespace model {
     int TileRegion::getChannelNumber() const {
         return channel_number;
     }
+
+    TileRegion::TileRegion() {}
 } // model

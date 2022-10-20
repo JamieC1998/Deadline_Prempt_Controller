@@ -8,13 +8,15 @@
 #include <utility>
 #include <ctime>
 #include <memory>
+#include <map>
 #include "../../model/data_models/WorkItems/BaseWorkItem/WorkItem.h"
 #include "../../model/data_models/ComputationDevice/ComputationDevice.h"
 
 namespace services {
 
-    std::pair<bool, std::pair<time_t, time_t>> allocate_task(model::WorkItem *pItem,
-                                                            std::shared_ptr<model::ComputationDevice> sharedPtr);
+    std::pair<bool, std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>>>
+    allocate_task(model::WorkItem *pItem, std::map<std::string, std::shared_ptr<model::ComputationDevice>> sharedPtr,
+                  std::map<std::string, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>> map);
 
 } // services
 

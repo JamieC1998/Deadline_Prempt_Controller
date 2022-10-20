@@ -8,10 +8,12 @@
 #include <utility>
 #include <vector>
 #include <ctime>
+#include <chrono>
 #include "../../enums/LayerTypeEnum.h"
-#include "../../TileRegion/TileRegion.h"
 #include "../../enums/DNN_Type_Enum.h"
+#include "../TileRegion/TileRegion.h"
 
+using namespace std::chrono_literals;
 namespace model {
 
     class BaseDNNModel {
@@ -19,7 +21,7 @@ namespace model {
         BaseDNNModel(int layerCount, enums::dnn_type type, std::vector<enums::LayerTypeEnum> layerType,
                      std::vector<TileRegion> inMaps, std::vector<TileRegion> outMaps,
                      std::vector<float> ramReq, std::vector<float> storageReq,
-                     std::vector<std::time_t> estimatedProcTime);
+                     std::vector<std::chrono::system_clock::duration> estimatedProcTime);
 
         BaseDNNModel();
 
@@ -47,9 +49,7 @@ namespace model {
 
         void setStorageReq(const std::vector<float> &storageReq);
 
-        const std::vector<std::time_t> &getEstimatedProcTime() const;
-
-        void setEstimatedProcTime(const std::vector<std::time_t> &estimatedProcTime);
+        std::vector<std::chrono::system_clock::duration> getEstimatedProcTime() const;
 
         enums::dnn_type getType() const;
 
@@ -65,7 +65,7 @@ namespace model {
         std::vector<TileRegion> out_maps;
         std::vector<float> RAM_REQ;
         std::vector<float> STORAGE_REQ;
-        std::vector<std::time_t> estimated_proc_time;
+        std::vector<std::chrono::system_clock::duration> estimated_proc_time;
     };
 
 } // model

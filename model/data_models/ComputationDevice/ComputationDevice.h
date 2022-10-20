@@ -46,9 +46,11 @@ namespace model {
 
         void setHostName(const std::string &hostName);
 
-        const std::vector<std::shared_ptr<int>> &getTasks() const;
+        const std::vector<std::shared_ptr<Task>> &getTasks() const;
 
-        void setTasks(const std::vector<std::shared_ptr<int>> &tasks);
+        void setTasks(const std::vector<std::shared_ptr<Task>> &tasks);
+
+        int getId() const;
 
     private:
         int id;
