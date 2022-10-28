@@ -3,9 +3,14 @@
 //
 
 #include "MasterController.h"
-#include "../Constants/RequestPaths.h"
+#include "../Constants/ControllerRequestPaths.h"
 #include "../model/data_models/WorkItems/ProcessingItem/ProcessingItem.h"
 #include "../model/data_models/WorkItems/DAGDisruptItem/DAGDisruption.h"
+#include "../utils/UtilFunctions/UtilFunctions.h"
+#include <iperf_api.h>
+#include "../Constants/CLIENT_DETAILS.h"
+#include "../utils/IPerfTest/IPerfTest.h"
+
 //#include "../model/ProcessOffloadRequest/ProcessOffloadRequest.h"
 
 using namespace web;
@@ -58,6 +63,9 @@ void MasterController::handlePost(http_request message) {
         } else if (path[0] == DEVICE_REGISTER_REQUEST) {
             dev_list->register_device(message.remote_address());
             message.reply(status_codes::Created);
+            if(dev_list->get_devices().size() == CLIENT_COUNT){
+                utils::iPerfTest(dev_list->get_devices());
+            }
         } else if (path[0] == DAG_DISRUPTION) {
             message.reply(status_codes::OK);
             workQueueManager->add_task(reinterpret_cast<model::WorkItem *>(new model::DAGDisruption(
@@ -85,4 +93,8 @@ json::value MasterController::responseNotImpl(const http::method &method) {
 
 MasterController::MasterController() {
     workQueueManager = std::make_shared<services::WorkQueueManager>();
+    //FUNCTION TO ADD BASE DNNS HERE
+    for(auto bDNN: baseDNNs)
+        bDNN->setBaseDnnSize(utils::calculateSizeOfInputData(bDNN));
+
 }

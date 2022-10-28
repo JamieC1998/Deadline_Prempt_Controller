@@ -27,13 +27,18 @@ namespace services {
         std::copy(network->getLink().begin(), network->getLink().end(), copyList->begin());
         net_lock.unlock();
 
-        //TODO IMPLEMENT PROPER BANDWIDTH
+        /*TODO IMPLEMENT PROPER BANDWIDTH*/
+
         float bw = 1;
         float latency = COMM_DELAY_MS;
-        float data_size_mb = 0.5;
+        /*TODO IMPLEMENT PROPER BANDWIDTH*/
+
+        float data_size_mb = static_cast<float>((reinterpret_cast<model::ProcessingItem *>(item))->getAllocationInputData().at(
+                0)->getBaseDnnSize());
+        data_size_mb = (data_size_mb / 1024) / 1024;
         std::map<std::string, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>> times;
 
-        for (auto name: *item->getHostList()) {
+        for (const auto& name: *item->getHostList()) {
             std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
             std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> time_slot = services::findLinkSlot(
                     currentTime, bw, latency, data_size_mb, copyList);
@@ -41,7 +46,7 @@ namespace services {
             copyList->push_back(std::make_shared<model::LinkAct>(*time_slot));
 
             std::sort(copyList->begin(), copyList->end(),
-                      [](std::shared_ptr<model::LinkAct> a, std::shared_ptr<model::LinkAct> b) {
+                      [](const std::shared_ptr<model::LinkAct>& a, const std::shared_ptr<model::LinkAct>& b) {
 
                           return a->getStartFinTime().second < b->getStartFinTime().second;
                       });

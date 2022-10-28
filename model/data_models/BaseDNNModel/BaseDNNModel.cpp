@@ -81,4 +81,20 @@ namespace model {
     std::vector<std::chrono::system_clock::duration> BaseDNNModel::getEstimatedProcTime() const {
         return estimated_proc_time;
     }
+
+    int BaseDNNModel::getBaseIdCounter() {
+        return base_id_counter;
+    }
+
+    int BaseDNNModel::getBaseDnnId() const {
+        return base_dnn_id;
+    }
+
+    unsigned long BaseDNNModel::getBaseDnnSize() const {
+        return baseDNN_size;
+    }
+
+    void BaseDNNModel::setBaseDnnSize(unsigned long baseDnnSize) {
+        baseDNN_size = baseDnnSize;
+    }
 } // model

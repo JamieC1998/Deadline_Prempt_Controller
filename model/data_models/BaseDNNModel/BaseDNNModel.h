@@ -55,6 +55,14 @@ namespace model {
 
         void setType(enums::dnn_type type);
 
+        static int getBaseIdCounter();
+
+        int getBaseDnnId() const;
+
+        unsigned long getBaseDnnSize() const;
+
+        void setBaseDnnSize(unsigned long baseDnnSize);
+
     private:
         static int base_id_counter;
         int LAYER_COUNT = 0;
@@ -66,6 +74,7 @@ namespace model {
         std::vector<float> RAM_REQ;
         std::vector<float> STORAGE_REQ;
         std::vector<std::chrono::system_clock::duration> estimated_proc_time;
+        unsigned long baseDNN_size;
     };
 
 } // model

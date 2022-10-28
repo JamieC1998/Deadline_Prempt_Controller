@@ -49,6 +49,7 @@ namespace model {
         void setDnnId(int dnnId);
 
         std::map<int, std::map<int, std::shared_ptr<Task>>> tasks;
+        std::pair<int, int> current_block = std::make_pair<int, int>(0, 0);
 
     private:
         int dnn_id;
@@ -59,7 +60,8 @@ namespace model {
         std::chrono::time_point<std::chrono::system_clock> deadline;
         std::chrono::time_point<std::chrono::system_clock> estimatedStart;
         std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
-        int block_count;
+        int group_block_count;
+
     };
 
 } // model

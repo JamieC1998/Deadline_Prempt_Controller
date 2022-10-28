@@ -16,7 +16,7 @@ namespace model {
 
     public:
         LinkAct(bool isMeta, const std::pair<int, int> &devIds, const std::pair<std::string, std::string> &hostNames,
-                float dataSize, long transferTimeMs, const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+                float dataSize, std::chrono::duration<long long int, std::ratio<1, 1000000>> transferTimeMs, const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
         LinkAct();
 
@@ -43,7 +43,7 @@ namespace model {
 
         void setDataSize(float dataSize);
 
-        long getTransferTime() const;
+        const std::chrono::time_point<std::chrono::system_clock> getTransferTime() const;
 
         void setTransferTime(std::chrono::time_point<std::chrono::system_clock> transferTime);
 
@@ -58,7 +58,7 @@ namespace model {
         std::pair<std::string, std::string> host_names;
 
         float data_size;
-        long transfer_time_ms;
+        std::chrono::time_point<std::chrono::system_clock> transfer_time_ms;
         std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
     };
 

@@ -2,8 +2,8 @@
 // Created by jamiec on 9/26/22.
 //
 
-#ifndef CONTROLLER_REQUESTPATHS_H
-#define CONTROLLER_REQUESTPATHS_H
+#ifndef CONTROLLER_CONTROLLERREQUESTPATHS_H
+#define CONTROLLER_CONTROLLERREQUESTPATHS_H
 
 namespace constant {
 #define DAG_DISRUPTION "dag_disruption"
@@ -11,4 +11,4 @@ namespace constant {
 #define DEVICE_REGISTER_REQUEST "register_device"
 }
 
-#endif //CONTROLLER_REQUESTPATHS_H
+#endif //CONTROLLER_CONTROLLERREQUESTPATHS_H
