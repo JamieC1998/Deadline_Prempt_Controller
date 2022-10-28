@@ -2,14 +2,23 @@
 // Created by Jamie Cotter on 25/10/2022.
 //
 
-#include <date/date.h>
+#include <iomanip>
 #include "UtilFunctions.h"
 #include "cpprest/json.h"
 #include "../../Constants/CLIENT_DETAILS.h"
 
 namespace utils {
+    //Credit to the anonymous user who posted this https://www.mycompiler.io/view/43wsMbrMcmx
     std::string convertDateToString(std::chrono::time_point<std::chrono::system_clock> timePoint) {
-        return date::format("%F %T\n", time_point_cast<std::chrono::milliseconds>(timePoint));
+        const std::chrono::high_resolution_clock::time_point::duration tt = timePoint.time_since_epoch();
+        const time_t durS = std::chrono::duration_cast<std::chrono::seconds>(tt).count();
+        std::ostringstream ss;
+        const std::tm *tm = std::gmtime(&durS);
+        ss << std::put_time(tm, "%Y-%m-%d %H:%M:%S.");
+
+        const long long durMs = std::chrono::duration_cast<std::chrono::milliseconds>(tt).count();
+        ss << std::setw(3) << std::setfill('0') << int(durMs - durS * 1000);
+        return ss.str();
     }
 
     unsigned long calculateSizeOfInputData(std::shared_ptr<model::BaseDNNModel> bDNN) {

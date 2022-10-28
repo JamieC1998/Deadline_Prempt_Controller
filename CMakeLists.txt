@@ -3,13 +3,13 @@ project(controller)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(BEFORE /usr/local/Cellar/openssl/1.0.2p/include)
-find_library(OPENSSL_LIB ssl PATHS /usr/local/Cellar/openssl/1.0.2p/lib NO_DEFAULT_PATH)
-find_library(CRYPTO_LIB crypto PATHS /usr/local/Cellar/openssl/1.0.2p/lib NO_DEFAULT_PATH)
+#include_directories(BEFORE /usr/local/Cellar/openssl/1.0.2p/include)
+#find_library(OPENSSL_LIB ssl PATHS /usr/local/Cellar/openssl/1.0.2p/lib NO_DEFAULT_PATH)
+#find_library(CRYPTO_LIB crypto PATHS /usr/local/Cellar/openssl/1.0.2p/lib NO_DEFAULT_PATH)
 
-find_package(openssl REQUIRED)
+#find_package(openssl REQUIRED)
 find_package(cpprestsdk REQUIRED)
-find_package(date REQUIRED)
+
 #find_package(libiperf REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread log program_options chrono)

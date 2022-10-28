@@ -3,6 +3,7 @@
 //
 
 #include <string>
+#include <cstring>
 #include "IPerfTest.h"
 extern "C" {
 #include "iperf_api.h"
@@ -15,13 +16,16 @@ namespace utils {
             struct iperf_test *test;
             test = iperf_new_test();
             if (test == NULL) {
-                fprintf(stderr, "%s: failed to create test, argv0");
+                fprintf(stderr, " failed to create test, argv0");
                 exit(EXIT_FAILURE);
             }
 
             iperf_defaults(test);
             iperf_set_test_role(test, 'c');
-            iperf_set_test_server_hostname(test, host.c_str());
+            char* ccx = new char[host.length() + 1];
+            std::copy(host.begin(), host.end(), ccx);
+
+            iperf_set_test_server_hostname(test, ccx);
             iperf_set_test_server_port(test, atoi(IPERF_PORT));
 
             iperf_set_test_omit(test, 3);
