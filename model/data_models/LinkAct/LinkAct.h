@@ -15,13 +15,13 @@ namespace model {
         static int link_activity_counter;
 
     public:
-        LinkAct(bool isMeta, const std::pair<int, int> &devIds, const std::pair<std::string, std::string> &hostNames,
-                float dataSize, std::chrono::duration<long long int, std::ratio<1, 1000000>> transferTimeMs, const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+        LinkAct(bool isMeta, std::pair<int, int> &devIds, std::pair<std::string, std::string> &hostNames,
+                float dataSize, std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
 
         LinkAct();
 
         explicit LinkAct(
-                const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+                const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
 
         int getLinkActivityId();
 
@@ -43,13 +43,9 @@ namespace model {
 
         void setDataSize(float dataSize);
 
-        const std::chrono::time_point<std::chrono::system_clock> getTransferTime() const;
+        const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &getStartFinTime() const;
 
-        void setTransferTime(std::chrono::time_point<std::chrono::system_clock> transferTime);
-
-        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &getStartFinTime() const;
-
-        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
 
     private:
         int link_activity_id = 0;
@@ -58,8 +54,7 @@ namespace model {
         std::pair<std::string, std::string> host_names;
 
         float data_size;
-        std::chrono::time_point<std::chrono::system_clock> transfer_time_ms;
-        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
+        std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> start_fin_time;
     };
 
 } // model

@@ -64,7 +64,7 @@ namespace model {
     BaseDNNModel::BaseDNNModel(int layerCount, enums::dnn_type type, std::vector<enums::LayerTypeEnum> layerType,
                                std::vector<TileRegion> inMaps, std::vector<TileRegion> outMaps,
                                std::vector<float> ramReq, std::vector<float> storageReq,
-                               std::vector<std::chrono::system_clock::duration> estimatedProcTime) : LAYER_COUNT(layerCount), type(type),
+                               std::vector<std::chrono::high_resolution_clock::duration> estimatedProcTime) : LAYER_COUNT(layerCount), type(type),
                                                                                     layer_type(std::move(layerType)),
                                                                                     in_maps(std::move(inMaps)), out_maps(std::move(outMaps)),
                                                                                     RAM_REQ(std::move(ramReq)),
@@ -76,10 +76,6 @@ namespace model {
 
     BaseDNNModel::BaseDNNModel() {
 
-    }
-
-    std::vector<std::chrono::system_clock::duration> BaseDNNModel::getEstimatedProcTime() const {
-        return estimated_proc_time;
     }
 
     int BaseDNNModel::getBaseIdCounter() {
@@ -97,4 +93,13 @@ namespace model {
     void BaseDNNModel::setBaseDnnSize(unsigned long baseDnnSize) {
         baseDNN_size = baseDnnSize;
     }
+
+    const std::vector<enums::LayerTypeEnum> &BaseDNNModel::getLayerType() const {
+        return layer_type;
+    }
+
+    std::vector<std::chrono::high_resolution_clock::duration> BaseDNNModel::getEstimatedProcTime() const {
+        return estimated_proc_time;
+    }
+
 } // model

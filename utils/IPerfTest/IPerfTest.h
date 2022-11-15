@@ -9,7 +9,7 @@
 
 namespace utils {
 
-    void iPerfTest(std::vector<std::string> hostNames);
+    std::pair<double, double> iPerfTest(std::vector<std::string> hostNames);
 
 } // utils
 

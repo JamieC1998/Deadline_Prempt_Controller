@@ -24,8 +24,16 @@ namespace model {
                                    std::map<std::string, std::shared_ptr<BaseDNNModel>> allocationInputData) : WorkItem(
             requestType, hostList), allocation_input_data(std::move(allocationInputData)) {}
 
-    const std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> &
+    const std::map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>> &
     ProcessingItem::getDeadline() const {
         return deadline;
+    }
+
+    const std::map<std::string, std::string> &ProcessingItem::getInputPath() const {
+        return input_path;
+    }
+
+    void ProcessingItem::setInputPath(const std::map<std::string, std::string> &inputPath) {
+        input_path = inputPath;
     }
 } // model

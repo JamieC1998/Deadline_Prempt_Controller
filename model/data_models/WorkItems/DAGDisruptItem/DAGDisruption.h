@@ -6,6 +6,7 @@
 #define CONTROLLER_DAGDISRUPTION_H
 
 #include "../BaseWorkItem/WorkItem.h"
+#include "chrono"
 
 namespace model {
 
@@ -32,11 +33,21 @@ namespace model {
 
         void setLayerId(int layerId);
 
+        const std::chrono::time_point<std::chrono::high_resolution_clock> &getFinishTime() const;
+
+        void setFinishTime(const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime);
+
+        const std::chrono::time_point<std::chrono::high_resolution_clock> &getEstimatedFinish() const;
+
+        void setEstimatedFinish(const std::chrono::time_point<std::chrono::high_resolution_clock> &estimatedFinish);
+
     private:
         int partitioned_dnn_id;
         int block_id;
         int partition_id;
         int layer_id;
+        std::chrono::time_point<std::chrono::high_resolution_clock> finish_time;
+        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_finish;
     };
 
 } // model

@@ -11,15 +11,17 @@
 #include "../../enums/RequestTypeEnum.h"
 #include "../TileRegion/TileRegion.h"
 #include "../LinkAct/LinkAct.h"
+#include "../../enums/DNN_Type_Enum.h"
 
 namespace model {
 
     class Task {
+        static int taskIdCounter;
     public:
-        Task(int dnnId, enums::request_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
+        Task(int dnnId, enums::dnn_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
              int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap, const std::shared_ptr<TileRegion> &outMap,
              int fusedTaskCount, const std::vector<int> &originalLayerIds, float maxRamReq, float maxStorageReq,
-             std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish, const std::string &allocatedHost,
+             std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish, const std::string &allocatedHost,
              const std::shared_ptr<LinkAct> &comms);
 
         Task();
@@ -28,9 +30,9 @@ namespace model {
 
         void setDnnId(int dnnId);
 
-        enums::request_type getRequestType() const;
+        enums::dnn_type getRequestType() const;
 
-        void setRequestType(enums::request_type requestType);
+        void setRequestType(enums::dnn_type requestType);
 
         int getGroupBlockId() const;
 
@@ -76,13 +78,13 @@ namespace model {
 
         void setMaxStorageReq(float maxStorageReq);
 
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedStart() const;
+        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedStart() const;
 
-        void setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart);
+        void setEstimatedStart(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart);
 
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedFinish() const;
+        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedFinish() const;
 
-        void setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
+        void setEstimatedFinish(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish);
 
         const std::string &getAllocatedHost() const;
 
@@ -93,8 +95,13 @@ namespace model {
         void setComms(const std::shared_ptr<LinkAct> &comms);
 
     private:
+        int unique_task_id;
+    public:
+        int getUniqueTaskId() const;
+
+    private:
         int dnn_id;
-        enums::request_type requestType;
+        enums::dnn_type requestType;
         int group_block_id;
         int block_parent_id;
         int partition_model_id;
@@ -109,8 +116,8 @@ namespace model {
         float MAX_RAM_REQ;
         float MAX_STORAGE_REQ;
 
-        std::chrono::time_point<std::chrono::system_clock> estimated_start;
-        std::chrono::time_point<std::chrono::system_clock> estimated_finish;
+        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_start;
+        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_finish;
 
         std::string allocated_host;
 

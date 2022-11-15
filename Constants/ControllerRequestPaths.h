@@ -5,8 +5,8 @@
 #ifndef CONTROLLER_CONTROLLERREQUESTPATHS_H
 #define CONTROLLER_CONTROLLERREQUESTPATHS_H
 
-namespace constant {
-#define DAG_DISRUPTION "dag_disruption"
+namespace constants {
+#define DAG_DISRUPTION_PATH "dag_disruption"
 #define OFFLOAD_REQUEST "offload_request"
 #define DEVICE_REGISTER_REQUEST "register_device"
 }

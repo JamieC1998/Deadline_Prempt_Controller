@@ -23,11 +23,14 @@ namespace model {
 
         std::shared_ptr<BaseDNNModel> getItem(std::string key);
 
-        const std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> &getDeadline() const;
+        const std::map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>> &getDeadline() const;
 
+        const std::map<std::string, std::string> &getInputPath() const;
+
+        void setInputPath(const std::map<std::string, std::string> &inputPath);
     private:
         std::map<std::string, std::shared_ptr<BaseDNNModel>> allocation_input_data;
-        std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> deadline;
+        std::map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>> deadline;
         std::map<std::string, std::string> input_path;
     };
 

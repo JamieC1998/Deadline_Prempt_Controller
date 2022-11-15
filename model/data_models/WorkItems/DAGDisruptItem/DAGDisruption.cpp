@@ -46,4 +46,21 @@ namespace model {
     void DAGDisruption::setLayerId(int layerId) {
         layer_id = layerId;
     }
+
+    const std::chrono::time_point<std::chrono::high_resolution_clock> &DAGDisruption::getFinishTime() const {
+        return finish_time;
+    }
+
+    void DAGDisruption::setFinishTime(const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime) {
+        finish_time = finishTime;
+    }
+
+    const std::chrono::time_point<std::chrono::high_resolution_clock> &DAGDisruption::getEstimatedFinish() const {
+        return estimated_finish;
+    }
+
+    void DAGDisruption::setEstimatedFinish(
+            const std::chrono::time_point<std::chrono::high_resolution_clock> &estimatedFinish) {
+        estimated_finish = estimatedFinish;
+    }
 } // model

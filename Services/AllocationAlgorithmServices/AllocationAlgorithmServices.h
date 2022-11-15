@@ -12,7 +12,7 @@
 
 namespace services {
     bool isValidNode(std::chrono::milliseconds estimatedProcTime, float ram_req,
-                     float storage_req, std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>  point,
+                     float storage_req, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>> point,
                      std::shared_ptr<model::ComputationDevice> device);
 
     bool checkCapacity(float ram_usage, int gpu_usage, float storage_usage,

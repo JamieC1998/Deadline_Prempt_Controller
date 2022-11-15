@@ -5,10 +5,11 @@
 #include "Task.h"
 
 namespace model {
-    Task::Task(int dnnId, enums::request_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
+    int Task::taskIdCounter = 0;
+    Task::Task(int dnnId, enums::dnn_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
                int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap,
                const std::shared_ptr<TileRegion> &outMap, int fusedTaskCount, const std::vector<int> &originalLayerIds,
-               float maxRamReq, float maxStorageReq, std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish,
+               float maxRamReq, float maxStorageReq, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish,
                const std::string &allocatedHost, const std::shared_ptr<LinkAct> &comms) : dnn_id(dnnId),
                                                                                           requestType(requestType),
                                                                                           group_block_id(groupBlockId),
@@ -32,7 +33,9 @@ namespace model {
                                                                                           estimated_finish(
                                                                                                   estimatedFinish),
                                                                                           allocated_host(allocatedHost),
-                                                                                          comms(comms) {}
+                                                                                          comms(comms), unique_task_id(Task::taskIdCounter) {
+        Task::taskIdCounter++;
+    }
 
     Task::Task() {}
 
@@ -44,11 +47,11 @@ namespace model {
         dnn_id = dnnId;
     }
 
-    enums::request_type Task::getRequestType() const {
+    enums::dnn_type Task::getRequestType() const {
         return requestType;
     }
 
-    void Task::setRequestType(enums::request_type requestType) {
+    void Task::setRequestType(enums::dnn_type requestType) {
         Task::requestType = requestType;
     }
 
@@ -140,19 +143,19 @@ namespace model {
         MAX_STORAGE_REQ = maxStorageReq;
     }
 
-    std::chrono::time_point<std::chrono::system_clock> Task::getEstimatedStart() const {
+    std::chrono::time_point<std::chrono::high_resolution_clock> Task::getEstimatedStart() const {
         return estimated_start;
     }
 
-    void Task::setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart) {
+    void Task::setEstimatedStart(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart) {
         estimated_start = estimatedStart;
     }
 
-    std::chrono::time_point<std::chrono::system_clock> Task::getEstimatedFinish() const {
+    std::chrono::time_point<std::chrono::high_resolution_clock> Task::getEstimatedFinish() const {
         return estimated_finish;
     }
 
-    void Task::setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish) {
+    void Task::setEstimatedFinish(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish) {
         estimated_finish = estimatedFinish;
     }
 
@@ -170,5 +173,9 @@ namespace model {
 
     void Task::setComms(const std::shared_ptr<LinkAct> &comms) {
         Task::comms = comms;
+    }
+
+    int Task::getUniqueTaskId() const {
+        return unique_task_id;
     }
 } // model

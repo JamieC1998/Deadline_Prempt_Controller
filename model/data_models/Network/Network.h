@@ -19,6 +19,9 @@ namespace model {
 
         std::vector<std::shared_ptr<LinkAct>>& getLink();
         std::map<std::string, std::shared_ptr<ComputationDevice>>& getDevices();
+        void addComm(std::shared_ptr<LinkAct> linkAct);
+        void addComms(std::vector<std::shared_ptr<LinkAct>> linkActs);
+        void sortLink();
 
     private:
         std::map<std::string, std::shared_ptr<ComputationDevice>> devices;

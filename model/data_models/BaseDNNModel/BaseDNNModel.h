@@ -21,7 +21,7 @@ namespace model {
         BaseDNNModel(int layerCount, enums::dnn_type type, std::vector<enums::LayerTypeEnum> layerType,
                      std::vector<TileRegion> inMaps, std::vector<TileRegion> outMaps,
                      std::vector<float> ramReq, std::vector<float> storageReq,
-                     std::vector<std::chrono::system_clock::duration> estimatedProcTime);
+                     std::vector<std::chrono::high_resolution_clock::duration> estimatedProcTime);
 
         BaseDNNModel();
 
@@ -29,39 +29,39 @@ namespace model {
 
         void setLayerCount(int layerCount);
 
-        const std::vector<enums::LayerTypeEnum> &getLayerType() const;
-
         void setLayerType(const std::vector<enums::LayerTypeEnum> &layerType);
-
-        const std::vector<TileRegion> &getInMaps() const;
 
         void setInMaps(const std::vector<TileRegion> &inMaps);
 
-        const std::vector<TileRegion> &getOutMaps() const;
-
         void setOutMaps(const std::vector<TileRegion> &outMaps);
-
-        const std::vector<float> &getRamReq() const;
 
         void setRamReq(const std::vector<float> &ramReq);
 
-        const std::vector<float> &getStorageReq() const;
-
         void setStorageReq(const std::vector<float> &storageReq);
-
-        std::vector<std::chrono::system_clock::duration> getEstimatedProcTime() const;
-
-        enums::dnn_type getType() const;
 
         void setType(enums::dnn_type type);
 
         static int getBaseIdCounter();
 
+        void setBaseDnnSize(unsigned long baseDnnSize);
+
         int getBaseDnnId() const;
 
-        unsigned long getBaseDnnSize() const;
+        enums::dnn_type getType() const;
 
-        void setBaseDnnSize(unsigned long baseDnnSize);
+        const std::vector<enums::LayerTypeEnum> &getLayerType() const;
+
+        const std::vector<TileRegion> &getInMaps() const;
+
+        const std::vector<TileRegion> &getOutMaps() const;
+
+        const std::vector<float> &getRamReq() const;
+
+        const std::vector<float> &getStorageReq() const;
+
+        std::vector<std::chrono::high_resolution_clock::duration> getEstimatedProcTime() const;
+
+        unsigned long getBaseDnnSize() const;
 
     private:
         static int base_id_counter;
@@ -73,7 +73,7 @@ namespace model {
         std::vector<TileRegion> out_maps;
         std::vector<float> RAM_REQ;
         std::vector<float> STORAGE_REQ;
-        std::vector<std::chrono::system_clock::duration> estimated_proc_time;
+        std::vector<std::chrono::high_resolution_clock::duration> estimated_proc_time;
         unsigned long baseDNN_size;
     };
 

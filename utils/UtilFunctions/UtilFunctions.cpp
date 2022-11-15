@@ -9,7 +9,7 @@
 
 namespace utils {
     //Credit to the anonymous user who posted this https://www.mycompiler.io/view/43wsMbrMcmx
-    std::string convertDateToString(std::chrono::time_point<std::chrono::system_clock> timePoint) {
+    std::string convertDateToString(std::chrono::time_point<std::chrono::high_resolution_clock> timePoint) {
         const std::chrono::high_resolution_clock::time_point::duration tt = timePoint.time_since_epoch();
         const time_t durS = std::chrono::duration_cast<std::chrono::seconds>(tt).count();
         std::ostringstream ss;
@@ -19,6 +19,19 @@ namespace utils {
         const long long durMs = std::chrono::duration_cast<std::chrono::milliseconds>(tt).count();
         ss << std::setw(3) << std::setfill('0') << int(durMs - durS * 1000);
         return ss.str();
+    }
+
+    std::ifstream::pos_type filesize(std::string filename)
+    {
+        std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+        return in.tellg();
+    }
+
+    void sortLink(std::vector<std::shared_ptr<model::LinkAct>>* network_link) {
+        std::sort(network_link->begin(), network_link->end(),
+                  [](const std::shared_ptr<model::LinkAct> &a, const std::shared_ptr<model::LinkAct> &b) {
+                      return a->getStartFinTime().second < b->getStartFinTime().second;
+                  });
     }
 
     unsigned long calculateSizeOfInputData(std::shared_ptr<model::BaseDNNModel> bDNN) {
@@ -37,13 +50,13 @@ namespace utils {
 
         output["source"] = web::json::value(tmp_string);
         output["deadline"] = web::json::value(
-                utils::convertDateToString((std::chrono::system_clock::now())));
+                utils::convertDateToString((std::chrono::high_resolution_clock::now())));
         output["estimated_start_time"] = web::json::value(
-                utils::convertDateToString(std::chrono::system_clock::now()));
+                utils::convertDateToString(std::chrono::high_resolution_clock::now()));
         output["estimated_start_time"] = web::json::value(
-                utils::convertDateToString(std::chrono::system_clock::now()));
+                utils::convertDateToString(std::chrono::high_resolution_clock::now()));
         output["estimated_finish_time"] = web::json::value(
-                utils::convertDateToString(std::chrono::system_clock::now()));
+                utils::convertDateToString(std::chrono::high_resolution_clock::now()));
         output["dnn_id"] = web::json::value(INT_MAX);
 
         std::string temp_current_block = std::to_string(INT_MAX) + "_" + std::to_string(INT_MAX);
@@ -67,8 +80,8 @@ namespace utils {
             //DECIDING MAX PARTITION COUNT
             for (int j = 0; j < (is_conv[i] == enums::LayerTypeEnum::conv) ? MAX_CORES : 1; j++) {
                 auto block = web::json::value();
-                block["estimated_finish_time"] = web::json::value(utils::convertDateToString(std::chrono::system_clock::now()));
-                block["estimated_start_time"] = web::json::value(utils::convertDateToString(std::chrono::system_clock::now()));
+                block["estimated_finish_time"] = web::json::value(utils::convertDateToString(std::chrono::high_resolution_clock::now()));
+                block["estimated_start_time"] = web::json::value(utils::convertDateToString(std::chrono::high_resolution_clock::now()));
                 block["group_block_id"] = web::json::value(INT_MAX);
                 block["block_id"] = web::json::value(INT_MAX);
                 block["allocated_device"] = web::json::value(tmp_string);
@@ -91,6 +104,14 @@ namespace utils {
             }
             group_blocks_val[i] = group_block;
         }
+
+        return std::string(output.serialize()).length() * sizeof(char);
+    }
+
+    unsigned long calculateStateUpdateSize() {
+        web::json::value output;
+        output["type"] = web::json::value(true);
+        output["task_id"] = web::json::value(INT_MAX);
 
         return std::string(output.serialize()).length() * sizeof(char);
     }

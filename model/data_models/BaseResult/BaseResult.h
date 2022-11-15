@@ -17,8 +17,8 @@ namespace model {
         static int dnnIdCounter;
 
     public:
-        BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, std::chrono::time_point<std::chrono::system_clock> deadline,
-                   std::chrono::time_point<std::chrono::system_clock> estimatedStart, std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
+        BaseResult(int sourceDevId, enums::dnn_type dnnType, const std::string &srcHost, std::chrono::time_point<std::chrono::high_resolution_clock> deadline,
+                   std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish);
 
         int getSourceDevId() const;
 
@@ -32,17 +32,17 @@ namespace model {
 
         void setSrcHost(const std::string &srcHost);
 
-        std::chrono::time_point<std::chrono::system_clock> getDeadline() const;
+        std::chrono::time_point<std::chrono::high_resolution_clock> getDeadline() const;
 
-        void setDeadline(std::chrono::time_point<std::chrono::system_clock> deadline);
+        void setDeadline(std::chrono::time_point<std::chrono::high_resolution_clock> deadline);
 
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedStart() const;
+        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedStart() const;
 
-        void setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart);
+        void setEstimatedStart(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart);
 
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedFinish() const;
+        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedFinish() const;
 
-        void setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
+        void setEstimatedFinish(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish);
 
         int getDnnId() const;
 
@@ -57,9 +57,9 @@ namespace model {
 
         enums::dnn_type dnnType;
         std::string srcHost;
-        std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::chrono::time_point<std::chrono::system_clock> estimatedStart;
-        std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
+        std::chrono::time_point<std::chrono::high_resolution_clock> deadline;
+        std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart;
+        std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish;
         int group_block_count;
 
     };

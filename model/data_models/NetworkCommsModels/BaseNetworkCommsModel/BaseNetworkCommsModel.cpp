@@ -6,7 +6,7 @@
 
 model::BaseNetworkCommsModel::BaseNetworkCommsModel(const std::vector<std::string> &hosts,
                                                     enums::network_comms_types type,
-                                                    const std::chrono::time_point<std::chrono::system_clock> &commTime,
+                                                    const std::chrono::time_point<std::chrono::high_resolution_clock> &commTime,
                                                     std::shared_ptr<BaseResult> allocatedTask, std::string input_file)
         : hosts(hosts), type(type), comm_time(commTime), allocatedTask(allocatedTask), input_file_path(input_file) {}
 
@@ -18,7 +18,7 @@ enums::network_comms_types model::BaseNetworkCommsModel::getType() const {
     return type;
 }
 
-const std::chrono::time_point<std::chrono::system_clock> &model::BaseNetworkCommsModel::getCommTime() const {
+const std::chrono::time_point<std::chrono::high_resolution_clock> &model::BaseNetworkCommsModel::getCommTime() const {
     return comm_time;
 }
 

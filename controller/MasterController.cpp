@@ -63,10 +63,13 @@ void MasterController::handlePost(http_request message) {
         } else if (path[0] == DEVICE_REGISTER_REQUEST) {
             dev_list->register_device(message.remote_address());
             message.reply(status_codes::Created);
-            if(dev_list->get_devices().size() == CLIENT_COUNT){
-                utils::iPerfTest(dev_list->get_devices());
+            if (dev_list->get_devices().size() == CLIENT_COUNT) {
+                std::pair<double, double> bits_per_second = utils::iPerfTest(dev_list->get_devices());
+                workQueueManager->setAverageBitsPerSecond(bits_per_second.first);
+                workQueueManager->setJitter(bits_per_second.second);
             }
-        } else if (path[0] == DAG_DISRUPTION) {
+
+        } else if (path[0] == DAG_DISRUPTION_PATH) {
             message.reply(status_codes::OK);
             workQueueManager->add_task(reinterpret_cast<model::WorkItem *>(new model::DAGDisruption(
                     static_cast<enums::request_type>(body["offload_type"].as_integer()),
@@ -94,7 +97,7 @@ json::value MasterController::responseNotImpl(const http::method &method) {
 MasterController::MasterController() {
     workQueueManager = std::make_shared<services::WorkQueueManager>();
     //FUNCTION TO ADD BASE DNNS HERE
-    for(auto bDNN: baseDNNs)
+    for (auto bDNN: baseDNNs)
         bDNN->setBaseDnnSize(utils::calculateSizeOfInputData(bDNN));
 
 }
