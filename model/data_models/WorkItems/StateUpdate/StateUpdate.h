@@ -6,39 +6,33 @@
 #define CONTROLLER_STATEUPDATE_H
 
 #include <chrono>
+#include <map>
 #include "../BaseWorkItem/WorkItem.h"
 
 namespace model {
 
-    class StateUpdate : WorkItem {
+    class StateUpdate : public WorkItem {
     public:
-        StateUpdate(enums::request_type requestType,
-                    const std::chrono::time_point<std::chrono::high_resolution_clock> &timestamp,
-                    const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime, int groupBlockId,
-                    int blockParentId, int partitionModelId, int allocatedDeviceId, int dnnId);
+        StateUpdate(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
+                    std::map<int, std::chrono::time_point<std::chrono::system_clock>> finishTimes,
+                    std::string convidx, std::string dnnId);
 
-        const std::chrono::time_point<std::chrono::high_resolution_clock> &getTimestamp() const;
+        const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &getFinishTimes() const;
 
-        const std::chrono::time_point<std::chrono::high_resolution_clock> &getFinishTime() const;
+        void setFinishTimes(const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &finishTimes);
 
-        int getGroupBlockId() const;
+        const std::string &getConvidx() const;
 
-        int getBlockParentId() const;
+        void setConvidx(const std::string &convidx);
 
-        int getPartitionModelId() const;
+        const std::string &getDnnId() const;
 
-        int getAllocatedDeviceId() const;
-
-        int getDnnId() const;
+        void setDnnId(const std::string &dnnId);
 
     private:
-        std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
-        std::chrono::time_point<std::chrono::high_resolution_clock> finish_time;
-        int group_block_id;
-        int block_parent_id;
-        int partition_model_id;
-        int allocated_device_id;
-        int dnn_id;
+        std::map<int, std::chrono::time_point<std::chrono::system_clock>> finish_times;
+        std::string convidx;
+        std::string dnn_id;
     };
 
 } // model

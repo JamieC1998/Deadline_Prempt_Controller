@@ -1,0 +1,14 @@
+//
+// Created by Jamie Cotter on 04/02/2023.
+//
+
+#ifndef CONTROLLER_ALLOCATIONMACROS_H
+#define CONTROLLER_ALLOCATIONMACROS_H
+
+namespace constant {
+#define TASK_NOT_FOUND -1
+#define ASSEMBLY_PADDING 2
+#define LOW_COMPLEXITY_PROCESSING_TIME 100
+};
+
+#endif //CONTROLLER_ALLOCATIONMACROS_H

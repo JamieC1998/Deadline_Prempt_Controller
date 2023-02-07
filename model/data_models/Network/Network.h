@@ -16,7 +16,7 @@ namespace model {
     class Network {
     public:
         explicit Network(const std::map<std::string, std::shared_ptr<ComputationDevice>> &devices);
-
+        std::vector<std::shared_ptr<LinkAct>> network_link;
         std::vector<std::shared_ptr<LinkAct>>& getLink();
         std::map<std::string, std::shared_ptr<ComputationDevice>>& getDevices();
         void addComm(std::shared_ptr<LinkAct> linkAct);
@@ -25,7 +25,7 @@ namespace model {
 
     private:
         std::map<std::string, std::shared_ptr<ComputationDevice>> devices;
-        std::vector<std::shared_ptr<LinkAct>> network_link;
+
     };
 
 } // model

@@ -4,8 +4,10 @@
 
 #include <chrono>
 #include "LowCompServices.h"
-#include "../../model/data_models/WorkItems/ProcessingItem/ProcessingItem.h"
+#include "../../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
 #include "../AllocationAlgorithmServices/AllocationAlgorithmServices.h"
+#include "../../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
+#include "../../Constants/AllocationMacros.h"
 
 using namespace constant;
 using namespace std::chrono_literals;
@@ -14,34 +16,30 @@ namespace services {
 
     /* Given a set of low complexity DNNs and a minimum start time for each it attempts to find a placement on their
      * host before their deadline */
-    std::pair<bool, std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>>>
-    allocate_task(model::WorkItem *pItem,
+    std::pair<bool, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>>
+    allocate_task(std::shared_ptr<model::WorkItem> pItem,
                   std::map<std::string, std::shared_ptr<model::ComputationDevice>> sharedPtr,
-                  std::map<std::string, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>> start_time) {
+                  std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> start_time) {
+        std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> time_window;
+        std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>> result;
 
-        std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>> result;
+        auto pI = static_pointer_cast<model::LowProcessingItem>(pItem);
+        auto [dnn_id, host] = pI->getDnnIdAndDevice();
 
-        auto *pI = reinterpret_cast<model::ProcessingItem *>(pItem);
+        std::chrono::system_clock::duration dr =
+                (start_time->first + std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME}) - start_time->first;
 
-        for (std::pair<const std::basic_string<char>, std::shared_ptr<model::BaseDNNModel>> item: pI->getAllocationInputData()) {
-            std::shared_ptr<model::BaseDNNModel> base = item.second;
+        if (services::isValidNode(std::chrono::duration_cast<std::chrono::milliseconds>(dr), start_time,
+                                  sharedPtr[host])) {
+            time_window = std::make_shared<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>(
+                    start_time->first,
+                    std::chrono::time_point_cast<std::chrono::milliseconds>(
+                            start_time->first +
+                            std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME}));
 
-            std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>> estimated_start_time = start_time[item.first];
-
-            std::chrono::high_resolution_clock::duration dr = base->getEstimatedProcTime()[0];
-
-            if (services::isValidNode(std::chrono::duration_cast<std::chrono::milliseconds>(dr), base->getRamReq()[0],
-                                      base->getStorageReq()[0], estimated_start_time, sharedPtr[item.first])) {
-                result->at(item.first) = std::make_pair(estimated_start_time->second,
-                                                        std::chrono::time_point_cast<std::chrono::milliseconds>(
-                                                                estimated_start_time->second +
-                                                                base->getEstimatedProcTime()[0]));
-            } else {
-                result->clear();
-                return make_pair(false, result);
-            }
+            return make_pair(true, time_window);
         }
 
-        return std::make_pair(true, result);
+        return std::make_pair(false, time_window);
     }
 } // services

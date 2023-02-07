@@ -15,46 +15,6 @@ namespace model {
         ComputationDevice::cores = cores;
     }
 
-    int ComputationDevice::getActiveCores() const {
-        return active_cores;
-    }
-
-    void ComputationDevice::setActiveCores(int activeCores) {
-        active_cores = activeCores;
-    }
-
-    float ComputationDevice::getRam() const {
-        return ram;
-    }
-
-    void ComputationDevice::setRam(float ram) {
-        ComputationDevice::ram = ram;
-    }
-
-    float ComputationDevice::getActiveRam() const {
-        return active_ram;
-    }
-
-    void ComputationDevice::setActiveRam(float activeRam) {
-        active_ram = activeRam;
-    }
-
-    float ComputationDevice::getStorage() const {
-        return storage;
-    }
-
-    void ComputationDevice::setStorage(float storage) {
-        ComputationDevice::storage = storage;
-    }
-
-    float ComputationDevice::getActiveStorage() const {
-        return active_storage;
-    }
-
-    void ComputationDevice::setActiveStorage(float activeStorage) {
-        active_storage = activeStorage;
-    }
-
     const std::string &ComputationDevice::getHostName() const {
         return host_name;
     }
@@ -71,10 +31,15 @@ namespace model {
         TASKS = tasks;
     }
 
-    ComputationDevice::ComputationDevice(int cores, float ram, float storage, const std::string &hostName) : cores(
-            cores), ram(ram), storage(storage), host_name(hostName), id(id_counter){ id_counter++; }
+    ComputationDevice::ComputationDevice(int cores, const std::string &hostName) : cores(
+            cores), host_name(hostName), id(id_counter){ id_counter++; }
 
     int ComputationDevice::getId() const {
         return id;
     }
+
+    void ComputationDevice::eraseTask(int index) {
+        ComputationDevice::TASKS.erase(index);
+    }
+
 } // model

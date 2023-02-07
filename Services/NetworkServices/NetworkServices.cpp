@@ -7,12 +7,12 @@
 using namespace std::chrono_literals;
 
 namespace services {
-    std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>
-    findLinkSlot(std::chrono::time_point<std::chrono::high_resolution_clock> baseStart, float bW_mbpms,
-                 float dataSize, std::shared_ptr<std::vector<std::shared_ptr<model::LinkAct>>> netLink) {
+    std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>
+    findLinkSlot(std::chrono::time_point<std::chrono::system_clock> baseStart, float bw_bpms,
+                 uint64_t dataSize, std::shared_ptr<std::vector<std::shared_ptr<model::LinkAct>>> netLink) {
         int index = 0;
-        float duration = dataSize / bW_mbpms;
-        std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> time_window;
+        float duration = dataSize / bw_bpms;
+        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> time_window;
         if (netLink->empty() ||
             netLink->front()->getStartFinTime().first > (baseStart + (1ms * duration)))
             time_window = std::make_pair(baseStart, std::chrono::time_point_cast<std::chrono::milliseconds>(
@@ -39,7 +39,7 @@ namespace services {
                     /* If time window A finished before our upload can start,
                      * then we use our upload start as our potential windows
                      * floor */
-                    std::chrono::time_point<std::chrono::high_resolution_clock> floor = ((*netLink)[i]->getStartFinTime().second > baseStart)
+                    std::chrono::time_point<std::chrono::system_clock> floor = ((*netLink)[i]->getStartFinTime().second > baseStart)
                                   ? (*netLink)[i]->getStartFinTime().second : baseStart;
                     if ((*netLink)[i + 1]->getStartFinTime().first - floor >= (1ms * duration)) {
                         index = i + 1;
@@ -51,6 +51,6 @@ namespace services {
 
         }
 
-        return std::make_shared<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>(time_window.first, time_window.second);
+        return std::make_shared<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>(time_window.first, time_window.second);
     }
 } // services

@@ -10,15 +10,19 @@
 #include "../../model/enums/RequestTypeEnum.h"
 #include "../../model/data_models/WorkItems/BaseWorkItem/WorkItem.h"
 #include "../../model/data_models/Network/Network.h"
-#include "../../model/data_models/BaseResult/BaseResult.h"
+#include "../../model/data_models/CompResult/HighCompResult/HighCompResult.h"
 #include "../../model/data_models/WorkItems/BaseWorkItem/WorkItem.h"
 #include "../NetworkQueueManager/NetworkQueueManager.h"
+#include "../../model/data_models/FTP_Lookup/FTP_Lookup.h"
+#include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
 
 namespace services {
 
     class WorkQueueManager {
     public:
-        void add_task(model::WorkItem* item);
+        WorkQueueManager();
+
+        void add_task(std::shared_ptr<model::WorkItem> item);
 
         [[noreturn]] void main_loop();
 
@@ -36,33 +40,40 @@ namespace services {
 
         double getJitter() const;
 
+        double getBytesPerMillisecond();
+
         void setJitter(double jitter);
 
-        std::map<std::string, std::shared_ptr<model::BaseResult>> &getOffTotal();
+        std::map<std::string, std::shared_ptr<model::BaseCompResult>> &getOffTotal();
 
-        std::map<std::string, std::shared_ptr<model::BaseResult>> &getOffLow();
+        std::map<std::string, std::shared_ptr<model::LowCompResult>> &getOffLow();
 
-        std::map<std::string, std::shared_ptr<model::BaseResult>> &getOffHigh();
+        static std::map<std::string, std::shared_ptr<model::HighCompResult>> &getOffHigh();
 
+        std::shared_ptr<model::FTP_Lookup> lookup_table;
+        uint64_t state_size = 0;
+
+        std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
+        std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
+        static std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
     private:
         static std::atomic<int> thread_counter;
-        std::vector<model::WorkItem*> current_task;
+        std::vector<std::shared_ptr<model::WorkItem>> current_task;
         //Maybe needs to be a dequeue
-        std::vector<model::WorkItem*> work_queue;
-        std::map<std::string, std::shared_ptr<model::BaseResult>> off_total;
-        std::map<std::string, std::shared_ptr<model::BaseResult>> off_low;
-        std::map<std::string, std::shared_ptr<model::BaseResult>> off_high;
+        std::vector<std::shared_ptr<model::WorkItem>> work_queue;
         double average_bits_per_second = 0.0;
         double jitter = 0.0;
     };
 
-    static void dag_disruption_call(model::WorkItem* item, WorkQueueManager* queueManager);
+    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void low_comp_allocation_call(model::WorkItem* item, WorkQueueManager* queueManager);
+    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void high_comp_allocation_call(model::WorkItem* item, WorkQueueManager* queueManager);
+    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void deadline_premp_call(model::WorkItem* item, WorkQueueManager* queueManager);
+    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+
+    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
     static void halt_call(WorkQueueManager* queueManager);
 

@@ -17,10 +17,6 @@ namespace model {
         WorkItem::requestType = requestType;
     }
 
-    WorkItem::WorkItem(enums::request_type requestType, std::shared_ptr<std::vector<std::string>> hostList) : requestType(
-            requestType), host_list(std::move(hostList)), internal_id(
-            internal_item_id_counter) { internal_item_id_counter++; }
-
     WorkItem::WorkItem(): internal_id(
             internal_item_id_counter) { internal_item_id_counter++; }
 
@@ -28,9 +24,12 @@ namespace model {
             requestType), internal_id(
             internal_item_id_counter) { internal_item_id_counter++; }
 
-    const std::shared_ptr<std::vector<std::string>> &WorkItem::getHostList() const {
+    std::shared_ptr<std::vector<std::string>> &WorkItem::getHostList() {
         return host_list;
     }
+
+    WorkItem::WorkItem(std::shared_ptr<std::vector<std::string>> hostList, enums::request_type requestType)
+            : host_list(std::move(hostList)), requestType(requestType) { internal_item_id_counter++; }
 
 
 } // model

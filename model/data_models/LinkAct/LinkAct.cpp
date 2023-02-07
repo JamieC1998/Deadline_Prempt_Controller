@@ -4,14 +4,17 @@
 
 #include "LinkAct.h"
 
+#include <utility>
+
 namespace model {
     int LinkAct::link_activity_counter = 0;
 
-    LinkAct::LinkAct(bool isMeta, std::pair<int, int> &devIds,
-                     std::pair<std::string, std::string> &hostNames, float dataSize,
-                     std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime) : is_meta(isMeta), dev_ids(devIds),
-                                                                      host_names(hostNames), data_size(dataSize),
-                                                                      start_fin_time(startFinTime), link_activity_id(
+    LinkAct::LinkAct(bool isMeta,
+                     std::pair<std::string, std::string> &hostNames, uint64_t dataSize,
+                     std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime)
+            : is_meta(isMeta),
+              host_names(hostNames), data_size(dataSize),
+              start_fin_time(startFinTime), link_activity_id(
                     link_activity_counter) { link_activity_counter++; }
 
     int LinkAct::getLinkActivityId() {
@@ -30,14 +33,6 @@ namespace model {
         is_meta = isMeta;
     }
 
-    const std::pair<int, int> &LinkAct::getDevIds() const {
-        return dev_ids;
-    }
-
-    void LinkAct::setDevIds(const std::pair<int, int> &devIds) {
-        dev_ids = devIds;
-    }
-
     const std::pair<std::string, std::string> &LinkAct::getHostNames() const {
         return host_names;
     }
@@ -46,25 +41,44 @@ namespace model {
         host_names = hostNames;
     }
 
-    float LinkAct::getDataSize() const {
+    uint64_t LinkAct::getDataSize() const {
         return data_size;
     }
 
-    void LinkAct::setDataSize(float dataSize) {
+    void LinkAct::setDataSize(uint64_t dataSize) {
         data_size = dataSize;
     }
 
-    const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &LinkAct::getStartFinTime() const {
+    const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &
+    LinkAct::getStartFinTime() const {
         return start_fin_time;
     }
 
-    void LinkAct::setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime) {
+    void LinkAct::setStartFinTime(
+            const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime) {
         start_fin_time = startFinTime;
     }
 
     LinkAct::LinkAct() {}
 
     LinkAct::LinkAct(
-            const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime)
-            : start_fin_time(startFinTime) {}
+            std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> startFinTime)
+            : start_fin_time(std::move(startFinTime)) {}
+
+    web::json::value LinkAct::convertToJson() {
+        web::json::value linkActJson;
+
+        linkActJson["link_activity_id"] = web::json::value::number(LinkAct::getLinkActivityId());
+        linkActJson["is_meta"] = web::json::value::boolean(LinkAct::isMeta());
+        auto hostNames = LinkAct::getHostNames();
+        linkActJson["host_names"]["first"] = web::json::value::string(hostNames.first);
+        linkActJson["host_names"]["second"] = web::json::value::string(hostNames.second);
+        linkActJson["data_size"] = web::json::value::number(LinkAct::getDataSize());
+        auto startFinTime = getStartFinTime();
+        linkActJson["start_fin_time"]["first"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                startFinTime.first.time_since_epoch()).count());
+        linkActJson["start_fin_time"]["second"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                startFinTime.second.time_since_epoch()).count());
+        return linkActJson;
+    }
 } // model

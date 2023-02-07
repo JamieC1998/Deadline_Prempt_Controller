@@ -5,11 +5,8 @@
 #ifndef CONTROLLER_HIGHCOMPSERVICES_H
 #define CONTROLLER_HIGHCOMPSERVICES_H
 
-#include <c++/9/utility>
 #include <chrono>
-#include <c++/9/string>
-#include <c++/9/map>
-#include <c++/9/memory>
+#include <map>
 #include "../../model/data_models/ComputationDevice/ComputationDevice.h"
 
 namespace services {
@@ -20,8 +17,8 @@ namespace services {
     findNode(
             std::map<std::string, std::shared_ptr<model::ComputationDevice>> &devices,
             std::map<int, std::vector<std::shared_ptr<model::Task>>> temp_task_list,
-            std::chrono::time_point<std::chrono::high_resolution_clock> expected_start,
-            std::chrono::time_point<std::chrono::high_resolution_clock> expected_finish);
+            std::chrono::time_point<std::chrono::system_clock> expected_start,
+            std::chrono::time_point<std::chrono::system_clock> expected_finish);
 
 } // services
 

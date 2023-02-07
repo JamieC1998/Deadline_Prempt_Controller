@@ -4,178 +4,178 @@
 
 #include "Task.h"
 
+#include <utility>
+
 namespace model {
     int Task::taskIdCounter = 0;
-    Task::Task(int dnnId, enums::dnn_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
-               int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap,
-               const std::shared_ptr<TileRegion> &outMap, int fusedTaskCount, const std::vector<int> &originalLayerIds,
-               float maxRamReq, float maxStorageReq, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish,
-               const std::string &allocatedHost, const std::shared_ptr<LinkAct> &comms) : dnn_id(dnnId),
-                                                                                          requestType(requestType),
-                                                                                          group_block_id(groupBlockId),
-                                                                                          block_parent_id(
-                                                                                                  blockParentId),
-                                                                                          partition_model_id(
-                                                                                                  partitionModelId),
-                                                                                          allocated_device_id(
-                                                                                                  allocatedDeviceId),
-                                                                                          in_map(inMap),
-                                                                                          out_map(outMap),
-                                                                                          fused_task_count(
-                                                                                                  fusedTaskCount),
-                                                                                          original_layer_ids(
-                                                                                                  originalLayerIds),
-                                                                                          MAX_RAM_REQ(maxRamReq),
-                                                                                          MAX_STORAGE_REQ(
-                                                                                                  maxStorageReq),
-                                                                                          estimated_start(
-                                                                                                  estimatedStart),
-                                                                                          estimated_finish(
-                                                                                                  estimatedFinish),
-                                                                                          allocated_host(allocatedHost),
-                                                                                          comms(comms), unique_task_id(Task::taskIdCounter) {
-        Task::taskIdCounter++;
+
+    Task::Task(): unique_task_id(taskIdCounter) {taskIdCounter++;}
+
+    Task::Task(std::string dnnId, enums::dnn_type requestType, std::string convidx, int previousConv,
+               int partitionBlockId, int n, int m,
+               const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
+               const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+               std::string allocatedHost, std::shared_ptr<LinkAct> inputData,
+               uint64_t taskOutputSizeBytes) : dnn_id(std::move(dnnId)), requestType(requestType), convidx(std::move(convidx)),
+                                               previous_conv(previousConv), partition_block_id(partitionBlockId), N(n),
+                                               M(m), estimated_start(estimatedStart), estimated_finish(estimatedFinish),
+                                               allocated_host(std::move(allocatedHost)), input_data(std::move(inputData)),
+                                               task_output_size_bytes(taskOutputSizeBytes), unique_task_id(taskIdCounter) {taskIdCounter++;}
+
+    int Task::getUniqueTaskId() const {
+        return unique_task_id;
     }
 
-    Task::Task() {}
-
-    int Task::getDnnId() const {
+    std::string Task::getDnnId() const {
         return dnn_id;
-    }
-
-    void Task::setDnnId(int dnnId) {
-        dnn_id = dnnId;
     }
 
     enums::dnn_type Task::getRequestType() const {
         return requestType;
     }
 
-    void Task::setRequestType(enums::dnn_type requestType) {
-        Task::requestType = requestType;
+    const std::string &Task::getConvidx() const {
+        return convidx;
     }
 
-    int Task::getGroupBlockId() const {
-        return group_block_id;
+    int Task::getPreviousConv() const {
+        return previous_conv;
     }
 
-    void Task::setGroupBlockId(int groupBlockId) {
-        group_block_id = groupBlockId;
+    int Task::getPartitionBlockId() const {
+        return partition_block_id;
     }
 
-    int Task::getBlockParentId() const {
-        return block_parent_id;
-    }
-
-    void Task::setBlockParentId(int blockParentId) {
-        block_parent_id = blockParentId;
-    }
-
-    int Task::getPartitionModelId() const {
-        return partition_model_id;
-    }
-
-    void Task::setPartitionModelId(int partitionModelId) {
-        partition_model_id = partitionModelId;
-    }
-
-    int Task::getAllocatedDeviceId() const {
-        return allocated_device_id;
-    }
-
-    void Task::setAllocatedDeviceId(int allocatedDeviceId) {
-        allocated_device_id = allocatedDeviceId;
-    }
-
-    const std::shared_ptr<TileRegion> &Task::getInMap() const {
-        return in_map;
-    }
-
-    void Task::setInMap(const std::shared_ptr<TileRegion> &inMap) {
-        in_map = inMap;
-    }
-
-    const std::shared_ptr<TileRegion> &Task::getOutMap() const {
-        return out_map;
-    }
-
-    void Task::setOutMap(const std::shared_ptr<TileRegion> &outMap) {
-        out_map = outMap;
-    }
-
-    int Task::getFusedTaskCount() const {
-        return fused_task_count;
-    }
-
-    void Task::setFusedTaskCount(int fusedTaskCount) {
-        fused_task_count = fusedTaskCount;
-    }
-
-    const std::vector<int> &Task::getOriginalLayerIds() const {
-        return original_layer_ids;
-    }
-
-    void Task::setOriginalLayerIds(const std::vector<int> &originalLayerIds) {
-        original_layer_ids = originalLayerIds;
-    }
-
-    const std::vector<bool> &Task::getCompleted() const {
+    bool Task::isCompleted() const {
         return completed;
     }
 
-    void Task::setCompleted(const std::vector<bool> &completed) {
-        Task::completed = completed;
+    int Task::getN() const {
+        return N;
     }
 
-    float Task::getMaxRamReq() const {
-        return MAX_RAM_REQ;
+    int Task::getM() const {
+        return M;
     }
 
-    void Task::setMaxRamReq(float maxRamReq) {
-        MAX_RAM_REQ = maxRamReq;
-    }
-
-    float Task::getMaxStorageReq() const {
-        return MAX_STORAGE_REQ;
-    }
-
-    void Task::setMaxStorageReq(float maxStorageReq) {
-        MAX_STORAGE_REQ = maxStorageReq;
-    }
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> Task::getEstimatedStart() const {
+    const std::chrono::time_point<std::chrono::system_clock> &Task::getEstimatedStart() const {
         return estimated_start;
     }
 
-    void Task::setEstimatedStart(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart) {
-        estimated_start = estimatedStart;
-    }
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> Task::getEstimatedFinish() const {
+    const std::chrono::time_point<std::chrono::system_clock> &Task::getEstimatedFinish() const {
         return estimated_finish;
-    }
-
-    void Task::setEstimatedFinish(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish) {
-        estimated_finish = estimatedFinish;
     }
 
     const std::string &Task::getAllocatedHost() const {
         return allocated_host;
     }
 
+    const std::shared_ptr<LinkAct> &Task::getInputData() const {
+        return input_data;
+    }
+
+    uint64_t Task::getTaskOutputSizeBytes() const {
+        return task_output_size_bytes;
+    }
+
+    void Task::setDnnId(std::string dnnId) {
+        dnn_id = dnnId;
+    }
+
+    void Task::setRequestType(enums::dnn_type requestType) {
+        Task::requestType = requestType;
+    }
+
+    void Task::setConvidx(const std::string &convidx) {
+        Task::convidx = convidx;
+    }
+
+    void Task::setPreviousConv(int previousConv) {
+        previous_conv = previousConv;
+    }
+
+    void Task::setPartitionBlockId(int partitionBlockId) {
+        partition_block_id = partitionBlockId;
+    }
+
+    void Task::setCompleted(bool completed) {
+        Task::completed = completed;
+    }
+
+    void Task::setN(int n) {
+        N = n;
+    }
+
+    void Task::setM(int m) {
+        M = m;
+    }
+
+    void Task::setEstimatedStart(const std::chrono::time_point<std::chrono::system_clock> &estimatedStart) {
+        estimated_start = estimatedStart;
+    }
+
+    void Task::setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish) {
+        estimated_finish = estimatedFinish;
+    }
+
     void Task::setAllocatedHost(const std::string &allocatedHost) {
         allocated_host = allocatedHost;
     }
 
-    const std::shared_ptr<LinkAct> &Task::getComms() const {
-        return comms;
+    void Task::setInputData(const std::shared_ptr<LinkAct> &inputData) {
+        input_data = inputData;
     }
 
-    void Task::setComms(const std::shared_ptr<LinkAct> &comms) {
-        Task::comms = comms;
+    void Task::setTaskOutputSizeBytes(uint64_t taskOutputSizeBytes) {
+        task_output_size_bytes = taskOutputSizeBytes;
     }
 
-    int Task::getUniqueTaskId() const {
-        return unique_task_id;
+    const std::chrono::time_point<std::chrono::system_clock> &Task::getActualFinish() const {
+        return actual_finish;
     }
+
+    void Task::setActualFinish(const std::chrono::time_point<std::chrono::system_clock> &actualFinish) {
+        actual_finish = actualFinish;
+    }
+
+    Task::Task(std::string dnnId, enums::dnn_type requestType,
+               const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
+               const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+               std::string allocatedHost, std::shared_ptr<LinkAct> inputData) : dnn_id(std::move(dnnId)),
+                                                                                              requestType(requestType),
+                                                                                              estimated_start(
+                                                                                                      estimatedStart),
+                                                                                              estimated_finish(
+                                                                                                      estimatedFinish),
+                                                                                              allocated_host(std::move(
+                                                                                                      allocatedHost)),
+                                                                                              input_data(std::move(inputData)) {}
+
+    web::json::value Task::convertToJson() {
+            web::json::value task_json;
+
+            task_json[U("unique_task_id")] = web::json::value::number(Task::getUniqueTaskId());
+            task_json[U("dnn_id")] = web::json::value::string(Task::getDnnId());
+            task_json[U("convidx")] = web::json::value::string(Task::getConvidx());
+            task_json[U("previous_conv")] = web::json::value::number(Task::getPreviousConv());
+            task_json[U("partition_block_id")] = web::json::value::number(Task::getPartitionBlockId());
+            task_json[U("completed")] = web::json::value::boolean(Task::isCompleted());
+            task_json[U("N")] = web::json::value::number(Task::getN());
+            task_json[U("M")] = web::json::value::number(Task::getM());
+
+            task_json[U("estimated_start")] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    Task::getEstimatedStart().time_since_epoch()).count());
+            task_json[U("estimated_finish")] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    Task::getEstimatedFinish().time_since_epoch()).count());
+            task_json[U("allocated_host")] = web::json::value::string(Task::getAllocatedHost());
+
+            task_json[U("input_data")] = web::json::value(Task::getInputData()->convertToJson());
+
+            task_json[U("task_output_size_bytes")] = web::json::value::number(Task::getTaskOutputSizeBytes());
+            task_json[U("actual_finish")] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    Task::getActualFinish().time_since_epoch()).count());
+        return task_json;
+    }
+
+
 } // model

@@ -8,7 +8,6 @@
 #include "BasicController/BasicController.h"
 #include "../Services/DeviceRegister/RegisterDevices.h"
 #include "../Services/WorkQueueManager/WorkQueueManager.h"
-#include "../model/data_models/BaseDNNModel/BaseDNNModel.h"
 
 namespace controller {
     class MasterController : public BasicController {
@@ -28,7 +27,7 @@ namespace controller {
         std::shared_ptr<services::RegisterDevices> dev_list = std::make_shared<services::RegisterDevices>();
         static web::json::value responseNotImpl(const web::http::method & method);
         std::shared_ptr<services::WorkQueueManager> workQueueManager;
-        std::vector<std::shared_ptr<model::BaseDNNModel>> baseDNNs;
+
 
     };
 }

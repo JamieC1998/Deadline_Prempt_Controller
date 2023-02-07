@@ -16,31 +16,11 @@ namespace model {
         static int id_counter;
 
     public:
-        ComputationDevice(int cores, float ram, float storage, const std::string &hostName);
+        ComputationDevice(int cores, const std::string &hostName);
 
         int getCores() const;
 
         void setCores(int cores);
-
-        int getActiveCores() const;
-
-        void setActiveCores(int activeCores);
-
-        float getRam() const;
-
-        void setRam(float ram);
-
-        float getActiveRam() const;
-
-        void setActiveRam(float activeRam);
-
-        float getStorage() const;
-
-        void setStorage(float storage);
-
-        float getActiveStorage() const;
-
-        void setActiveStorage(float activeStorage);
 
         const std::string &getHostName() const;
 
@@ -52,16 +32,12 @@ namespace model {
 
         int getId() const;
 
+        std::vector<std::shared_ptr<Task>> TASKS;
+
     private:
         int id;
         int cores;
-        int active_cores;
-        float ram;
-        float active_ram;
-        float storage;
-        float active_storage;
         std::string host_name;
-        std::vector<std::shared_ptr<Task>> TASKS;
     };
 
 } // model

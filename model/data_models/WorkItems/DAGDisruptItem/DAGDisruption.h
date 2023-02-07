@@ -10,44 +10,40 @@
 
 namespace model {
 
-    class DAGDisruption: WorkItem {
+    class DAGDisruption: public WorkItem {
     public:
-        DAGDisruption(enums::request_type requestType, const std::shared_ptr<std::vector<std::string>> &hostList,
-                      int partitionedDnnId, int blockId, int partitionId, int layerId);
+        DAGDisruption(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
+                      const std::string &partitionedDnnId, const std::string &convidx, int partitionId,
+                      const std::chrono::time_point<std::chrono::system_clock> &finishTime);
 
-        explicit DAGDisruption(int partitionedDnnId);
+        explicit DAGDisruption(std::string partitionedDnnId);
 
-        int getPartitionedDnnId() const;
+        std::string getPartitionedDnnId() const;
 
-        void setPartitionedDnnId(int partitionedDnnId);
+        void setPartitionedDnnId(std::string partitionedDnnId);
 
-        int getBlockId() const;
+        std::string getConvidx() const;
 
-        void setBlockId(int blockId);
+        void setConvidx(std::string blockId);
 
         int getPartitionId() const;
 
         void setPartitionId(int partitionId);
 
-        int getLayerId() const;
+        const std::chrono::time_point<std::chrono::system_clock> &getFinishTime() const;
 
-        void setLayerId(int layerId);
+        void setFinishTime(const std::chrono::time_point<std::chrono::system_clock> &finishTime);
 
-        const std::chrono::time_point<std::chrono::high_resolution_clock> &getFinishTime() const;
+        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedFinish() const;
 
-        void setFinishTime(const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime);
-
-        const std::chrono::time_point<std::chrono::high_resolution_clock> &getEstimatedFinish() const;
-
-        void setEstimatedFinish(const std::chrono::time_point<std::chrono::high_resolution_clock> &estimatedFinish);
+        void setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish);
 
     private:
-        int partitioned_dnn_id;
-        int block_id;
+        std::string partitioned_dnn_id;
+        std::string convidx;
         int partition_id;
-        int layer_id;
-        std::chrono::time_point<std::chrono::high_resolution_clock> finish_time;
-        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_finish;
+        std::chrono::time_point<std::chrono::system_clock> finish_time;
+        std::chrono::time_point<std::chrono::system_clock> estimated_finish;
     };
 
 } // model

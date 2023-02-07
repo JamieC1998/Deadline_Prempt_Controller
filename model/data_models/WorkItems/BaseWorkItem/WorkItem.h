@@ -16,19 +16,20 @@ namespace model {
     class WorkItem {
     public:
         static int internal_item_id_counter;
+
         int internal_id;
 
         enums::request_type getRequestType() const;
 
-        void setRequestType(enums::request_type requestType);
-
-        WorkItem(enums::request_type requestType, std::shared_ptr<std::vector<std::string>> hostList);
-
-        WorkItem(enums::request_type requestType);
-
         WorkItem();
 
-        const std::shared_ptr<std::vector<std::string>> &getHostList() const;
+        explicit WorkItem(enums::request_type requestType);
+
+        WorkItem(std::shared_ptr<std::vector<std::string>> hostList, enums::request_type requestType);
+
+        void setRequestType(enums::request_type requestType);
+
+        std::shared_ptr<std::vector<std::string>> &getHostList();
 
     private:
         std::shared_ptr<std::vector<std::string>> host_list;

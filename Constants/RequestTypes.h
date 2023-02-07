@@ -8,10 +8,10 @@
 namespace constant {
 
 #define STATE_UPDATE 1
-#define HALT_REQ 2
-#define DAG_DISRUPTION 3
-#define LOW_COMPLEXITY 4
-#define DEADLINE_PREEMPTION 5
+#define PRUNE_DNN 2
+#define HALT_REQ 3
+#define DAG_DISRUPTION 4
+#define LOW_COMPLEXITY 5
 #define HIGH_COMPLEXITY 6
 
 }

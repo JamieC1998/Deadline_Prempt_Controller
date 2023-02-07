@@ -8,6 +8,7 @@
 #include <utility>
 #include <string>
 #include <chrono>
+#include "cpprest/json.h"
 
 namespace model {
 
@@ -15,13 +16,13 @@ namespace model {
         static int link_activity_counter;
 
     public:
-        LinkAct(bool isMeta, std::pair<int, int> &devIds, std::pair<std::string, std::string> &hostNames,
-                float dataSize, std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
+        LinkAct(bool isMeta, std::pair<std::string, std::string> &hostNames,
+                uint64_t dataSize, std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
         LinkAct();
 
         explicit LinkAct(
-                const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
+                std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> startFinTime);
 
         int getLinkActivityId();
 
@@ -31,30 +32,26 @@ namespace model {
 
         void setIsMeta(bool isMeta);
 
-        const std::pair<int, int> &getDevIds() const;
-
-        void setDevIds(const std::pair<int, int> &devIds);
-
         const std::pair<std::string, std::string> &getHostNames() const;
 
         void setHostNames(const std::pair<std::string, std::string> &hostNames);
 
-        float getDataSize() const;
+        uint64_t getDataSize() const;
 
-        void setDataSize(float dataSize);
+        void setDataSize(uint64_t dataSize);
 
-        const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &getStartFinTime() const;
+        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &getStartFinTime() const;
 
-        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> &startFinTime);
+        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
+        web::json::value convertToJson();
     private:
         int link_activity_id = 0;
         bool is_meta;
-        std::pair<int, int> dev_ids;
         std::pair<std::string, std::string> host_names;
 
-        float data_size;
-        std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>> start_fin_time;
+        uint64_t data_size;
+        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
     };
 
 } // model

@@ -9,8 +9,8 @@ namespace services {
     findNode(
             std::map<std::string, std::shared_ptr<model::ComputationDevice>> &devices,
             std::map<int, std::vector<std::shared_ptr<model::Task>>> temp_task_list,
-            std::chrono::time_point<std::chrono::high_resolution_clock> expected_start,
-            std::chrono::time_point<std::chrono::high_resolution_clock> expected_finish) {
+            std::chrono::time_point<std::chrono::system_clock> expected_start,
+            std::chrono::time_point<std::chrono::system_clock> expected_finish) {
 
         int selected_device = -1;
         std::string host_name;

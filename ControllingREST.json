@@ -1,0 +1,38 @@
+{
+  "high_comp_allocation": {
+    "endpoint": "high_offload_request",
+    "request_body": {
+      "dnn_id": "string",
+      "deadline": "milliseconds since unix epoch as int"
+    }
+  },
+  "low_comp_allocation": {
+    "endpoint": "low_offload_request",
+    "request_body": {
+      "dnn_id": "string",
+      "deadline": "milliseconds since unix epoch as int"
+    }
+  },
+  "dag_disruption": {
+    "endpoint": "dag_disruption",
+    "request_body": {
+      "dnn_id": "string",
+      "convidx": "string",
+      "partition_id": "int",
+      "finish_time": "milliseconds since unix epoch as int"
+    }
+  },
+  "state_update": {
+    "endpoint": "state_update",
+    "request_body": {
+      "finish_times": [
+        {
+          "partition_id": "int representing id",
+          "finish_time": "milliseconds since unix epoch as int"
+        }
+      ],
+      "conv_idx": "string",
+      "dnn_id": "string"
+    }
+  }
+}

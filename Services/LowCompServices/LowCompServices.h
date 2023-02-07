@@ -14,10 +14,10 @@
 
 namespace services {
 
-    std::pair<bool, std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>>>
-    allocate_task(model::WorkItem *pItem,
+    std::pair<bool, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>>
+    allocate_task(std::shared_ptr<model::WorkItem> pItem,
                   std::map<std::string, std::shared_ptr<model::ComputationDevice>> sharedPtr,
-                  std::map<std::string, std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, std::chrono::time_point<std::chrono::high_resolution_clock>>>> start_time);
+                  std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> start_time);
 
 } // services
 

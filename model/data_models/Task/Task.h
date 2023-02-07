@@ -18,110 +18,100 @@ namespace model {
     class Task {
         static int taskIdCounter;
     public:
-        Task(int dnnId, enums::dnn_type requestType, int groupBlockId, int blockParentId, int partitionModelId,
-             int allocatedDeviceId, const std::shared_ptr<TileRegion> &inMap, const std::shared_ptr<TileRegion> &outMap,
-             int fusedTaskCount, const std::vector<int> &originalLayerIds, float maxRamReq, float maxStorageReq,
-             std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart, std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish, const std::string &allocatedHost,
-             const std::shared_ptr<LinkAct> &comms);
+        Task(std::string dnnId, enums::dnn_type requestType, std::string convidx, int previousConv, int partitionBlockId,
+             int n, int m, const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
+             const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+             std::string allocatedHost, std::shared_ptr<LinkAct> inputData, uint64_t taskOutputSizeBytes);
+
+        Task(std::string dnnId, enums::dnn_type requestType,
+             const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
+             const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+             std::string allocatedHost, std::shared_ptr<LinkAct> inputData);
 
         Task();
 
-        int getDnnId() const;
+        int getUniqueTaskId() const;
 
-        void setDnnId(int dnnId);
+        std::string getDnnId() const;
 
         enums::dnn_type getRequestType() const;
 
-        void setRequestType(enums::dnn_type requestType);
+        const std::string &getConvidx() const;
 
-        int getGroupBlockId() const;
+        int getPreviousConv() const;
 
-        void setGroupBlockId(int groupBlockId);
+        int getPartitionBlockId() const;
 
-        int getBlockParentId() const;
+        bool isCompleted() const;
 
-        void setBlockParentId(int blockParentId);
+        int getN() const;
 
-        int getPartitionModelId() const;
+        int getM() const;
 
-        void setPartitionModelId(int partitionModelId);
+        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedStart() const;
 
-        int getAllocatedDeviceId() const;
-
-        void setAllocatedDeviceId(int allocatedDeviceId);
-
-        const std::shared_ptr<TileRegion> &getInMap() const;
-
-        void setInMap(const std::shared_ptr<TileRegion> &inMap);
-
-        const std::shared_ptr<TileRegion> &getOutMap() const;
-
-        void setOutMap(const std::shared_ptr<TileRegion> &outMap);
-
-        int getFusedTaskCount() const;
-
-        void setFusedTaskCount(int fusedTaskCount);
-
-        const std::vector<int> &getOriginalLayerIds() const;
-
-        void setOriginalLayerIds(const std::vector<int> &originalLayerIds);
-
-        const std::vector<bool> &getCompleted() const;
-
-        void setCompleted(const std::vector<bool> &completed);
-
-        float getMaxRamReq() const;
-
-        void setMaxRamReq(float maxRamReq);
-
-        float getMaxStorageReq() const;
-
-        void setMaxStorageReq(float maxStorageReq);
-
-        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedStart() const;
-
-        void setEstimatedStart(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedStart);
-
-        std::chrono::time_point<std::chrono::high_resolution_clock> getEstimatedFinish() const;
-
-        void setEstimatedFinish(std::chrono::time_point<std::chrono::high_resolution_clock> estimatedFinish);
+        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedFinish() const;
 
         const std::string &getAllocatedHost() const;
 
+        const std::shared_ptr<LinkAct> &getInputData() const;
+
+        uint64_t getTaskOutputSizeBytes() const;
+
+        void setDnnId(std::string dnnId);
+
+        void setRequestType(enums::dnn_type requestType);
+
+        void setConvidx(const std::string &convidx);
+
+        void setPreviousConv(int previousConv);
+
+        void setPartitionBlockId(int partitionBlockId);
+
+        void setCompleted(bool completed);
+
+        void setN(int n);
+
+        void setM(int m);
+
+        void setEstimatedStart(const std::chrono::time_point<std::chrono::system_clock> &estimatedStart);
+
+        void setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish);
+
         void setAllocatedHost(const std::string &allocatedHost);
 
-        const std::shared_ptr<LinkAct> &getComms() const;
+        void setInputData(const std::shared_ptr<LinkAct> &inputData);
 
-        void setComms(const std::shared_ptr<LinkAct> &comms);
+        void setTaskOutputSizeBytes(uint64_t taskOutputSizeBytes);
+
+        const std::chrono::time_point<std::chrono::system_clock> &getActualFinish() const;
+
+        void setActualFinish(const std::chrono::time_point<std::chrono::system_clock> &actualFinish);
+
+        web::json::value convertToJson();
 
     private:
         int unique_task_id;
-    public:
-        int getUniqueTaskId() const;
-
-    private:
-        int dnn_id;
+        std::string dnn_id;
         enums::dnn_type requestType;
-        int group_block_id;
-        int block_parent_id;
-        int partition_model_id;
-        int allocated_device_id;
-        std::shared_ptr<TileRegion> in_map;
-        std::shared_ptr<TileRegion> out_map;
 
-        int fused_task_count;
-        std::vector<int> original_layer_ids;
-        std::vector<bool> completed;
+        std::string convidx;
+        int previous_conv;
+        int partition_block_id;
+        bool completed;
 
-        float MAX_RAM_REQ;
-        float MAX_STORAGE_REQ;
+        int N;
+        int M;
 
-        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_start;
-        std::chrono::time_point<std::chrono::high_resolution_clock> estimated_finish;
+        std::chrono::time_point<std::chrono::system_clock> estimated_start;
+        std::chrono::time_point<std::chrono::system_clock> estimated_finish;
+        std::chrono::time_point<std::chrono::system_clock> actual_finish;
 
         std::string allocated_host;
 
-        std::shared_ptr<LinkAct> comms;
+        std::shared_ptr<LinkAct> input_data;
+
+        uint64_t task_output_size_bytes = 0;
     };
 
 } // model

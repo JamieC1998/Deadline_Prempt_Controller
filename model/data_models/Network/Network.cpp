@@ -2,7 +2,6 @@
 // Created by jamiec on 9/27/22.
 //
 
-#include <c++/9/algorithm>
 #include "Network.h"
 
 namespace model {

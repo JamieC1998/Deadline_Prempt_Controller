@@ -5,30 +5,23 @@
 #include "DAGDisruption.h"
 
 namespace model {
-    DAGDisruption::DAGDisruption(enums::request_type requestType,
-                                 const std::shared_ptr<std::vector<std::string>> &hostList, int partitionedDnnId,
-                                 int blockId, int partitionId, int layerId) : WorkItem(requestType, hostList),
-                                                                              partitioned_dnn_id(partitionedDnnId),
-                                                                              block_id(blockId),
-                                                                              partition_id(partitionId),
-                                                                              layer_id(layerId) {}
 
-    DAGDisruption::DAGDisruption(int partitionedDnnId) : partitioned_dnn_id(partitionedDnnId) {}
+    DAGDisruption::DAGDisruption(std::string partitionedDnnId) : partitioned_dnn_id(partitionedDnnId) {}
 
-    int DAGDisruption::getPartitionedDnnId() const {
+    std::string DAGDisruption::getPartitionedDnnId() const {
         return partitioned_dnn_id;
     }
 
-    void DAGDisruption::setPartitionedDnnId(int partitionedDnnId) {
+    void DAGDisruption::setPartitionedDnnId(std::string partitionedDnnId) {
         partitioned_dnn_id = partitionedDnnId;
     }
 
-    int DAGDisruption::getBlockId() const {
-        return block_id;
+    std::string DAGDisruption::getConvidx() const {
+        return convidx;
     }
 
-    void DAGDisruption::setBlockId(int blockId) {
-        block_id = blockId;
+    void DAGDisruption::setConvidx(std::string blockId) {
+        convidx = blockId;
     }
 
     int DAGDisruption::getPartitionId() const {
@@ -39,28 +32,29 @@ namespace model {
         partition_id = partitionId;
     }
 
-    int DAGDisruption::getLayerId() const {
-        return layer_id;
-    }
-
-    void DAGDisruption::setLayerId(int layerId) {
-        layer_id = layerId;
-    }
-
-    const std::chrono::time_point<std::chrono::high_resolution_clock> &DAGDisruption::getFinishTime() const {
+    const std::chrono::time_point<std::chrono::system_clock> &DAGDisruption::getFinishTime() const {
         return finish_time;
     }
 
-    void DAGDisruption::setFinishTime(const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime) {
+    void DAGDisruption::setFinishTime(const std::chrono::time_point<std::chrono::system_clock> &finishTime) {
         finish_time = finishTime;
     }
 
-    const std::chrono::time_point<std::chrono::high_resolution_clock> &DAGDisruption::getEstimatedFinish() const {
+    const std::chrono::time_point<std::chrono::system_clock> &DAGDisruption::getEstimatedFinish() const {
         return estimated_finish;
     }
 
     void DAGDisruption::setEstimatedFinish(
-            const std::chrono::time_point<std::chrono::high_resolution_clock> &estimatedFinish) {
+            const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish) {
         estimated_finish = estimatedFinish;
     }
+
+    DAGDisruption::DAGDisruption(const std::shared_ptr<std::vector<std::string>> &hostList,
+                                 enums::request_type requestType, const std::string &partitionedDnnId,
+                                 const std::string &convidx, int partitionId,
+                                 const std::chrono::time_point<std::chrono::system_clock> &finishTime) : WorkItem(
+            hostList, requestType), partitioned_dnn_id(partitionedDnnId), convidx(convidx), partition_id(partitionId),
+                                                                                                         finish_time(
+                                                                                                                 finishTime) {}
+
 } // model

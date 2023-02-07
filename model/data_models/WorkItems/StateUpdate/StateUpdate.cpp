@@ -4,41 +4,40 @@
 
 #include "StateUpdate.h"
 
+#include <utility>
+
 namespace model {
 
-    StateUpdate::StateUpdate(enums::request_type requestType,
-                             const std::chrono::time_point<std::chrono::high_resolution_clock> &timestamp,
-                             const std::chrono::time_point<std::chrono::high_resolution_clock> &finishTime, int groupBlockId,
-                             int blockParentId, int partitionModelId, int allocatedDeviceId, int dnnId) : WorkItem(
-            requestType), timestamp(timestamp), finish_time(finishTime), group_block_id(groupBlockId), block_parent_id(
-            blockParentId), partition_model_id(partitionModelId), allocated_device_id(allocatedDeviceId),
-                                                                                                          dnn_id(dnnId) {}
+    StateUpdate::StateUpdate(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
+                             std::map<int, std::chrono::time_point<std::chrono::system_clock>> finishTimes,
+                             std::string convidx, std::string dnnId) : WorkItem(hostList, requestType),
+                                                                                     finish_times(std::move(finishTimes)),
+                                                                                     convidx(std::move(convidx)), dnn_id(std::move(dnnId)) {}
 
-    const std::chrono::time_point<std::chrono::high_resolution_clock> &StateUpdate::getTimestamp() const {
-        return timestamp;
+    const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &StateUpdate::getFinishTimes() const {
+        return finish_times;
     }
 
-    const std::chrono::time_point<std::chrono::high_resolution_clock> &StateUpdate::getFinishTime() const {
-        return finish_time;
+    void
+    StateUpdate::setFinishTimes(const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &finishTimes) {
+        finish_times = finishTimes;
     }
 
-    int StateUpdate::getGroupBlockId() const {
-        return group_block_id;
+    const std::string &StateUpdate::getConvidx() const {
+        return convidx;
     }
 
-    int StateUpdate::getBlockParentId() const {
-        return block_parent_id;
+    void StateUpdate::setConvidx(const std::string &convidx) {
+        StateUpdate::convidx = convidx;
     }
 
-    int StateUpdate::getPartitionModelId() const {
-        return partition_model_id;
-    }
-
-    int StateUpdate::getAllocatedDeviceId() const {
-        return allocated_device_id;
-    }
-
-    int StateUpdate::getDnnId() const {
+    const std::string &StateUpdate::getDnnId() const {
         return dnn_id;
     }
+
+    void StateUpdate::setDnnId(const std::string &dnnId) {
+        dnn_id = dnnId;
+    }
+
+
 } // model
