@@ -20,7 +20,7 @@ namespace model {
         return allocatedTask;
     }
 
-    void HighComplexityAllocationComms::setAllocatedTask(const std::shared_ptr<BaseResult> &allocatedTask) {
+    void HighComplexityAllocationComms::setAllocatedTask(const std::shared_ptr<HighCompResult> &allocatedTask) {
         HighComplexityAllocationComms::allocatedTask = allocatedTask;
     }
 

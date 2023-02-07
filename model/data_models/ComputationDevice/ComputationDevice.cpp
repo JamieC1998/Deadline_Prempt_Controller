@@ -38,8 +38,4 @@ namespace model {
         return id;
     }
 
-    void ComputationDevice::eraseTask(int index) {
-        ComputationDevice::TASKS.erase(index);
-    }
-
 } // model

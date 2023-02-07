@@ -7,7 +7,7 @@
 
 namespace constant {
 
-#define STATE_UPDATE 1
+#define REQ_TYPE_STATE_UPDATE 1
 #define PRUNE_DNN 2
 #define HALT_REQ 3
 #define DAG_DISRUPTION 4

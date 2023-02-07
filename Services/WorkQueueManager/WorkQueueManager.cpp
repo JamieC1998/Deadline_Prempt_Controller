@@ -295,7 +295,7 @@ namespace services {
                 continue;
 
             bool allocation_found = false;
-            for (int current_core = MAX_CORE_ALLOWANCE; current_core >= 1; current_core / 2) {
+            for (int current_core = MAX_CORE_ALLOWANCE; current_core >= 1; current_core = current_core / 2) {
                 int CURRENT_N = convolutional_block[std::to_string(current_core)].getN();
                 int CURRENT_M = convolutional_block[std::to_string(current_core)].getM();
 
