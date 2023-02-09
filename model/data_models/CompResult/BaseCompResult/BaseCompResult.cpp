@@ -5,10 +5,13 @@
 #include "BaseCompResult.h"
 
 namespace model {
-    BaseCompResult::BaseCompResult(const std::string &dnnId, enums::dnn_type dnnType) : dnn_id(dnnId),
-                                                                                        dnnType(dnnType) {}
+    int BaseCompResult::uniqueDnnIdCounter = 0;
 
-    BaseCompResult::BaseCompResult() {}
+    BaseCompResult::BaseCompResult(const std::string &dnnId, enums::dnn_type dnnType) : dnn_id(dnnId),
+                                                                                        dnnType(dnnType), uniqueDnnId(
+                    uniqueDnnIdCounter) { uniqueDnnIdCounter++; }
+
+    BaseCompResult::BaseCompResult() : uniqueDnnId(uniqueDnnIdCounter) { uniqueDnnIdCounter++; }
 
     const std::string &BaseCompResult::getDnnId() const {
         return dnn_id;
@@ -24,5 +27,9 @@ namespace model {
 
     void BaseCompResult::setDnnType(enums::dnn_type dnnType) {
         BaseCompResult::dnnType = dnnType;
+    }
+
+    int BaseCompResult::getUniqueDnnId() const {
+        return uniqueDnnId;
     }
 } // model

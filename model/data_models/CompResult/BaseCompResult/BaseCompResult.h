@@ -11,6 +11,7 @@
 namespace model {
 
     class BaseCompResult {
+        static int uniqueDnnIdCounter;
     public:
         BaseCompResult(const std::string &dnnId, enums::dnn_type dnnType);
         BaseCompResult();
@@ -23,7 +24,10 @@ namespace model {
 
         void setDnnType(enums::dnn_type dnnType);
 
+        int getUniqueDnnId() const;
+
     private:
+        int uniqueDnnId;
         std::string dnn_id;
         enums::dnn_type dnnType;
     };

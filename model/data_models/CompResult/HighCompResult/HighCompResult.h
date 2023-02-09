@@ -56,6 +56,10 @@ namespace model {
 
         std::map<std::string, std::shared_ptr<ResultBlock>> tasks;
 
+        const std::string &getVersion() const;
+
+        void setVersion(const std::string &version);
+
     private:
         std::string srcHost;
         std::chrono::time_point<std::chrono::system_clock> deadline;
@@ -63,7 +67,9 @@ namespace model {
         std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
 
         std::string starting_convidx;
+        int lastCompleteConvidx = -1;
         std::shared_ptr<LinkAct> upload_data;
+        std::string version = std::to_string(int(std::chrono::system_clock::now().time_since_epoch().count()));
     };
 
 } // model

@@ -69,6 +69,7 @@ namespace model {
 
     web::json::value HighCompResult::convertToJson() {
         web::json::value result_json;
+        result_json["unique_dnn_id"] = web::json::value::number(HighCompResult::getUniqueDnnId());
         result_json["dnnId"] = web::json::value::string(HighCompResult::getDnnId());
         result_json["srcHost"] = web::json::value::string(HighCompResult::getSrcHost());
 
@@ -78,7 +79,12 @@ namespace model {
         result_json["estimatedStart"] = web::json::value::number(
                 std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getEstimatedStart().time_since_epoch()).count());
 
+        result_json["estimatedFinish"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getEstimatedFinish().time_since_epoch()).count());
+
         result_json["startingConvidx"] = web::json::value::string(HighCompResult::getStartingConvidx());
+        result_json["lastCompleteConvidx"] = web::json::value::number(HighCompResult::getLastCompleteConvIdx());
+        result_json["version"] = web::json::value::string(HighCompResult::getVersion());
 
         web::json::value upload_data_json;
 
@@ -95,5 +101,21 @@ namespace model {
         result_json["tasks"] = tasks_json;
 
         return result_json;
+    }
+
+    void HighCompResult::setLastCompleteConvIdx(int currentConvix) {
+        HighCompResult::lastCompleteConvidx = currentConvix;
+    }
+
+    int HighCompResult::getLastCompleteConvIdx() const {
+        return HighCompResult::lastCompleteConvidx;
+    }
+
+    const std::string &HighCompResult::getVersion() const {
+        return version;
+    }
+
+    void HighCompResult::setVersion(const std::string &version) {
+        HighCompResult::version = version;
     }
 } // model

@@ -102,9 +102,9 @@ namespace utils {
         int counter = 0;
         int N = 0;
         int M = 0;
-        for(int i = 1; i == height; i++){
+        for(int i = 0; i < height; i++){
             M = i;
-            for(int j = 1; j == width; j++){
+            for(int j = 0; j < width; j++){
                 N = j;
                 counter++;
                 if(counter == position)

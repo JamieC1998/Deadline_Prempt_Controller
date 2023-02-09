@@ -14,6 +14,7 @@
 #include "../../model/data_models/NetworkCommsModels/HighComplexityAllocation/HighComplexityAllocationComms.h"
 #include "../../model/data_models/NetworkCommsModels/OutboundUpdate/OutboundUpdate.h"
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
+#include "../../model/data_models/NetworkCommsModels/HaltNetworkCommsModel/HaltNetworkCommsModel.h"
 
 using namespace std;
 using namespace web;
@@ -47,7 +48,7 @@ namespace services {
                         lowTaskAllocation(comms_model, this);
                         break;
                     case enums::network_comms_types::high_complexity_task_reallocation:
-
+                        highTaskReallocation(comms_model, this);
                         break;
                 }
             } else
@@ -65,8 +66,10 @@ namespace services {
         json::value result;
         result[U("conv_idx")] = json::value::string(conv_block_to_update);
         result[U("dnn")] = json::value(taskStructure);
+        result[U("timestamp")] = json::value::number(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
 
         for (auto hostName: queueManager->getHosts()) {
+            result[U("host")] = json::value::string(hostName);
             auto client = http::client::http_client(hostName).request(http::methods::POST,
                                                                       U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
                                                                         TASK_UPDATE),
@@ -105,12 +108,18 @@ namespace services {
     }
 
     void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+        auto haltCommModel = static_pointer_cast<model::HaltNetworkCommsModel>(comm_model);
+
+        web::json::value result;
+
+        for(auto [key, value]: haltCommModel->getVersionMap())
+            result[key] = web::json::value::string(value);
 
         for (const auto &host: queueManager->getHosts()) {
 
             auto client = web::http::client::http_client(host).request(web::http::methods::POST,
                                                                        ":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                                       std::string(HALT_ENDPOINT))
+                                                                       std::string(HALT_ENDPOINT), result.serialize())
                     .then([](web::http::http_response response) {
                     });
 

@@ -20,6 +20,7 @@
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
 #include "../../model/data_models/WorkItems/PruneItem/PruneItem.h"
 #include "../../model/data_models/NetworkCommsModels/OutboundUpdate/OutboundUpdate.h"
+#include "../../model/data_models/NetworkCommsModels/HaltNetworkCommsModel/HaltNetworkCommsModel.h"
 
 namespace services {
     std::atomic<int> WorkQueueManager::thread_counter = 0;
@@ -721,17 +722,23 @@ namespace services {
             hostList.push_back(host_id);
         }
 
-        std::shared_ptr<model::BaseNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::BaseNetworkCommsModel>(
+        std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
+        offload_lock.lock();
+
+        std::map<std::string, std::string> result_json;
+        for (auto [dnn_id, dnn]: queueManager->off_high)
+            result_json[dnn_id] = dnn->getVersion();
+
+        std::shared_ptr<model::HaltNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::HaltNetworkCommsModel>(
                 enums::network_comms_types::halt_req,
-                std::chrono::system_clock::now());
+                std::chrono::system_clock::now(), result_json);
 
         queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
 
         std::vector<std::shared_ptr<model::HighCompResult>> highProcessingList;
 
-        std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
+
         std::unique_lock<std::mutex> network_lock(queueManager->network_lock, std::defer_lock);
-        offload_lock.lock();
 
         //Need to record incomplete tasks for reallocation (device allocated to, task_id)
         std::vector<std::pair<std::string, int>> devices_and_tasks_to_prune;
