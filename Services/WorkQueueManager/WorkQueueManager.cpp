@@ -244,6 +244,7 @@ namespace services {
 
         if (isReallocation) {
             baseResult = processingItem->getBaseResult();
+            baseResult->setVersion(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
             partition_allocations_per_block.insert(baseResult->tasks.begin(), baseResult->tasks.end());
         }
 
@@ -706,9 +707,11 @@ namespace services {
 
             queueManager->add_task(std::static_pointer_cast<model::WorkItem>(pruneItem));
         } else {
+            uint64_t old_version = violated_dnn->getVersion();
+            violated_dnn->setVersion(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
             auto outboundUpdate = std::make_shared<model::OutboundUpdate>(enums::network_comms_types::task_update,
                                                                           std::chrono::system_clock::now(),
-                                                                          violated_dnn, conv_block_to_update_to);
+                                                                          violated_dnn, conv_block_to_update_to, old_version);
             queueManager->networkQueueManager->addTask(
                     std::static_pointer_cast<model::BaseNetworkCommsModel>(outboundUpdate));
         }
@@ -725,7 +728,7 @@ namespace services {
         std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
         offload_lock.lock();
 
-        std::map<std::string, std::string> result_json;
+        std::map<std::string, uint64_t> result_json;
         for (auto [dnn_id, dnn]: queueManager->off_high)
             result_json[dnn_id] = dnn->getVersion();
 

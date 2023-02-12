@@ -14,7 +14,7 @@ namespace model {
     public:
         OutboundUpdate(enums::network_comms_types type,
                        const std::chrono::time_point<std::chrono::system_clock> &commTime,
-                       std::shared_ptr<model::HighCompResult> dnn, std::string updateConvidx);
+                       std::shared_ptr<model::HighCompResult> dnn, std::string updateConvidx, uint64_t old_version);
 
         const std::shared_ptr<model::HighCompResult> &getDnn() const;
 
@@ -24,10 +24,14 @@ namespace model {
 
         void setUpdateConvidx(const std::string &updateConvidx);
 
+        uint64_t getOldVersion() const;
+
+        void setOldVersion(uint64_t oldVersion);
 
     private:
         std::shared_ptr<model::HighCompResult> dnn;
         std::string update_convidx;
+        uint64_t old_version;
     };
 };
 

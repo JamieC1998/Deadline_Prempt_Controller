@@ -17,8 +17,8 @@ void model::OutboundUpdate::setDnn(const std::shared_ptr<model::HighCompResult> 
 model::OutboundUpdate::OutboundUpdate(enums::network_comms_types type,
                                       const std::chrono::time_point<std::chrono::system_clock> &commTime,
                                       std::shared_ptr<model::HighCompResult> dnn,
-                                      std::string updateConvidx) : BaseNetworkCommsModel(type, commTime),
-                                                                          dnn(std::move(dnn)), update_convidx(std::move(updateConvidx)) {}
+                                      std::string updateConvidx, uint64_t oldVersion) : BaseNetworkCommsModel(type, commTime),
+                                                                          dnn(std::move(dnn)), update_convidx(std::move(updateConvidx)), old_version(oldVersion) {}
 
 const std::string &model::OutboundUpdate::getUpdateConvidx() const {
     return update_convidx;
@@ -26,4 +26,12 @@ const std::string &model::OutboundUpdate::getUpdateConvidx() const {
 
 void model::OutboundUpdate::setUpdateConvidx(const std::string &updateConvidx) {
     update_convidx = updateConvidx;
+}
+
+uint64_t model::OutboundUpdate::getOldVersion() const {
+    return old_version;
+}
+
+void model::OutboundUpdate::setOldVersion(uint64_t oldVersion) {
+    old_version = oldVersion;
 }

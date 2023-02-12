@@ -56,9 +56,9 @@ namespace model {
 
         std::map<std::string, std::shared_ptr<ResultBlock>> tasks;
 
-        const std::string &getVersion() const;
+        uint64_t getVersion();
 
-        void setVersion(const std::string &version);
+        void setVersion(uint64_t version);
 
     private:
         std::string srcHost;
@@ -69,7 +69,7 @@ namespace model {
         std::string starting_convidx;
         int lastCompleteConvidx = -1;
         std::shared_ptr<LinkAct> upload_data;
-        std::string version = std::to_string(int(std::chrono::system_clock::now().time_since_epoch().count()));
+        uint64_t version = std::chrono::system_clock::now().time_since_epoch().count() * 1000;
     };
 
 } // model

@@ -84,7 +84,7 @@ namespace model {
 
         result_json["startingConvidx"] = web::json::value::string(HighCompResult::getStartingConvidx());
         result_json["lastCompleteConvidx"] = web::json::value::number(HighCompResult::getLastCompleteConvIdx());
-        result_json["version"] = web::json::value::string(HighCompResult::getVersion());
+        result_json["version"] = web::json::value::number(HighCompResult::getVersion());
 
         web::json::value upload_data_json;
 
@@ -111,11 +111,11 @@ namespace model {
         return HighCompResult::lastCompleteConvidx;
     }
 
-    const std::string &HighCompResult::getVersion() const {
+    uint64_t HighCompResult::getVersion() {
         return version;
     }
 
-    void HighCompResult::setVersion(const std::string &version) {
+    void HighCompResult::setVersion(uint64_t version) {
         HighCompResult::version = version;
     }
 } // model

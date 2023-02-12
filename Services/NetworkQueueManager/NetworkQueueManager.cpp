@@ -64,9 +64,8 @@ namespace services {
 
         json::value taskStructure = br->convertToJson();
         json::value result;
-        result[U("conv_idx")] = json::value::string(conv_block_to_update);
         result[U("dnn")] = json::value(taskStructure);
-        result[U("timestamp")] = json::value::number(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
+        result[U("old_version")] = json::value::number(taskUpdate->getOldVersion());
 
         for (auto hostName: queueManager->getHosts()) {
             result[U("host")] = json::value::string(hostName);
@@ -107,13 +106,36 @@ namespace services {
                 });
     }
 
+    void
+    highTaskReallocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+        auto reallocationComm = static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
+        auto hostName = reallocationComm->getHost();
+        auto dnn = reallocationComm->getAllocatedTask();
+        auto conv_idx_to_update = std::to_string(dnn->getLastCompleteConvIdx() + 1);
+
+        auto task_json = dnn->convertToJson();
+        json::value output;
+        output[U("starting_conv")] = json::value::string(conv_idx_to_update);
+        output[U("dnn")] = json::value(task_json);
+
+        http::client::http_client(hostName).request(http::methods::POST,
+                                                    U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
+                                                      HIGH_TASK_REALLOCATION),
+                                                    output.serialize()).then(
+                [](web::http::http_response response) {
+                    // No need to wait, just log the status code
+                    std::cout << "Status code: " << response.status_code() << std::endl;
+                });
+    }
+
+
     void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
         auto haltCommModel = static_pointer_cast<model::HaltNetworkCommsModel>(comm_model);
 
         web::json::value result;
 
         for(auto [key, value]: haltCommModel->getVersionMap())
-            result[key] = web::json::value::string(value);
+            result[key] = web::json::value::number(value);
 
         for (const auto &host: queueManager->getHosts()) {
 
@@ -153,29 +175,6 @@ namespace services {
                     std::cout << "Status code: " << response.status_code() << std::endl;
                 });
     }
-
-    void
-    highTaskReallocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
-        auto reallocationComm = static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
-        auto hostName = reallocationComm->getHost();
-        auto dnn = reallocationComm->getAllocatedTask();
-        auto conv_idx_to_update = std::to_string(dnn->getLastCompleteConvIdx() + 1);
-
-        auto task_json = dnn->convertToJson();
-        json::value output;
-        output[U("starting_conv")] = json::value::string(conv_idx_to_update);
-        output[U("dnn")] = json::value(task_json);
-
-        http::client::http_client(hostName).request(http::methods::POST,
-                                                    U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                      HIGH_TASK_REALLOCATION),
-                                                    output.serialize()).then(
-                [](web::http::http_response response) {
-                    // No need to wait, just log the status code
-                    std::cout << "Status code: " << response.status_code() << std::endl;
-                });
-    }
-
 
     void NetworkQueueManager::addTask(std::shared_ptr<model::BaseNetworkCommsModel> comm_model) {
         std::unique_lock<std::mutex> lock(networkMutex, std::defer_lock);
