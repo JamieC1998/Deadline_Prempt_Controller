@@ -4,6 +4,7 @@
 #include "thread"
 #include <cpprest/http_listener.h>
 #include "controller/MasterController.h"
+#include "Constants/CLIENT_DETAILS.h"
 
 int main() {
     std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();
@@ -14,7 +15,7 @@ int main() {
 
     MasterController controller = MasterController(logManager, workQueueManager);
 
-    web::http::experimental::listener::http_listener listener("http://localhost:6502/");
+    web::http::experimental::listener::http_listener listener("http://localhost:" + std::to_string(CONTROLLER_REST_PORT) + "/");
     listener.support(web::http::methods::GET,
                      std::bind(&MasterController::handle_get, &controller, std::placeholders::_1));
     listener.support(web::http::methods::POST,

@@ -21,11 +21,14 @@ namespace constant{
 #define LOW_TASK_ALLOCATION "allocate_low_task"
 #define SET_EXPERIMENT_START "experiment_start"
 
-#define PER_DEVICE_CORES 4
-#define MAX_CORES 16
-#define MAX_CORE_ALLOWANCE (MAX_CORES / 2)
+
 #define CLIENT_COUNT 4
+#define PER_DEVICE_CORES 4
+#define MAX_CORES (CLIENT_COUNT * PER_DEVICE_CORES)
+#define MAX_CORE_ALLOWANCE (MAX_CORES / 2)
+
 #define CONTROLLER_HOSTNAME "COM-C132-M34579"
+#define CONTROLLER_REST_PORT 6502
 }
 
 #endif //CONTROLLER_CLIENT_DETAILS_H
