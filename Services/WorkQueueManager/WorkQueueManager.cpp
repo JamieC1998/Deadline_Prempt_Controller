@@ -1012,7 +1012,7 @@ namespace services {
         lk.unlock();
     }
 
-    [[noreturn]] void WorkQueueManager::main_loop(const std::shared_ptr<WorkQueueManager>& queueManager) {
+    [[noreturn]] void WorkQueueManager::main_loop(std::shared_ptr<WorkQueueManager> queueManager) {
         std::unique_lock<std::mutex> lk(queueManager->work_queue_lock, std::defer_lock);
         while (true) {
             queueManager->current_task.clear();
@@ -1093,12 +1093,13 @@ namespace services {
         WorkQueueManager::jitter = jitter;
     }
 
-    WorkQueueManager::WorkQueueManager(std::shared_ptr<services::LogManager> ptr): logManager(std::move(ptr)) {
+    WorkQueueManager::WorkQueueManager(std::shared_ptr<LogManager> ptr, std::shared_ptr<NetworkQueueManager> sharedPtr)
+            : logManager(std::move(ptr)) {
         WorkQueueManager::lookup_table = utils::parseFTP_Lookup();
         WorkQueueManager::state_size = utils::calculateSizeOfInputData(lookup_table);
         WorkQueueManager::network = std::make_shared<model::Network>();
-        WorkQueueManager::networkQueueManager = std::make_shared<services::NetworkQueueManager>(ptr);
-        WorkQueueManager::network_comms_thread = std::thread(services::NetworkQueueManager::initNetworkCommLoop,WorkQueueManager::networkQueueManager);
+        WorkQueueManager::networkQueueManager = sharedPtr;
+
     }
 
     double WorkQueueManager::getBytesPerMillisecond() {

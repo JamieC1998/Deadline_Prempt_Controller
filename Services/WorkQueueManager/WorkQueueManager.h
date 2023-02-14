@@ -21,11 +21,11 @@ namespace services {
 
     class WorkQueueManager {
     public:
-        explicit WorkQueueManager(std::shared_ptr<services::LogManager> ptr);
+        explicit WorkQueueManager(std::shared_ptr<LogManager> ptr, std::shared_ptr<NetworkQueueManager> sharedPtr);
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
-        [[noreturn]] static void main_loop(const std::shared_ptr<WorkQueueManager>& queueManager);
+        [[noreturn]] static void main_loop(std::shared_ptr<WorkQueueManager> queueManager);
 
         static void decrementThreadCounter();
 
@@ -51,7 +51,6 @@ namespace services {
         std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
         std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
         std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
-        std::thread network_comms_thread;
         std::shared_ptr<services::LogManager> logManager;
     private:
         static std::atomic<int> thread_counter;

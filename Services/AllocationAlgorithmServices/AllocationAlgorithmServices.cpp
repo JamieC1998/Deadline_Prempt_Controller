@@ -53,12 +53,12 @@ namespace services {
             }
         }
 
-        if (!services::checkCapacity(max_core_usage + 1, device))
+        if (!checkCapacity(max_core_usage + 1, device))
             return false;
         return true;
     }
 
-    bool services::checkCapacity(int gpu_usage, const std::shared_ptr<model::ComputationDevice> &node) {
+    bool checkCapacity(int gpu_usage, const std::shared_ptr<model::ComputationDevice> &node) {
 
         if (gpu_usage > node->getCores())
             return false;

@@ -15,5 +15,5 @@ namespace services {
         device_list.Push(std::move(host_name));
     }
 
-    RegisterDevices::RegisterDevices() {}
+    RegisterDevices::RegisterDevices() = default;
 }

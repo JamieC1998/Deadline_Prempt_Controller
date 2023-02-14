@@ -17,17 +17,9 @@
 
 using namespace web;
 using namespace http;
-using namespace controller;
 
-//void MasterController::initRestOpHandlers() {
-//    _listener.support(methods::GET, std::bind(&MasterController::handleGet, this, std::placeholders::_1));
-//    _listener.support(methods::POST, std::bind(&MasterController::handlePost, this, std::placeholders::_1));
-//    _listener.support(methods::DEL, std::bind(&MasterController::handleDelete, this, std::placeholders::_1));
-//}
-
-void MasterController::handleGet(http_request message) {
-//    auto path = requestPath(message);
-    auto path = std::string (message.relative_uri().path());
+void MasterController::handle_get(http_request message) {
+    auto path = std::string(message.relative_uri().path());
     auto body = message.extract_json().get();
     if (!path.empty()) {
         json::value response;
@@ -47,20 +39,16 @@ void MasterController::handleGet(http_request message) {
     message.reply(status_codes::NotFound);
 }
 
-void MasterController::handlePost(http_request message) {
-//    auto path = requestPath(message);
-    auto path = std::string (message.relative_uri().path());
+void MasterController::handle_post(http_request message) {
+    auto path = std::string(message.relative_uri().path());
     auto body = message.extract_json().get();
     if (!path.empty()) {
         json::value response;
-        if (path == LOG_RESULT){
+        if (path == LOG_RESULT) {
             std::string result = MasterController::logManager->write_log();
             message.reply(status_codes::OK, result).wait();
-            MasterController::workQueueManager->network_comms_thread.detach();
-            MasterController::workQueueThread.detach();
             exit(1);
-        }
-        else if (path == HIGH_OFFLOAD_REQUEST) {
+        } else if (path == HIGH_OFFLOAD_REQUEST) {
             message.reply(status_codes::OK);
 
             enums::request_type requestType = enums::request_type::high_complexity;
@@ -163,7 +151,6 @@ void MasterController::handlePost(http_request message) {
             MasterController::logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_REQUEST, log);
 
 
-
             std::shared_ptr<model::DAGDisruption> dagDisruption = std::make_shared<model::DAGDisruption>(hostList,
                                                                                                          requestType,
                                                                                                          dnn_id,
@@ -216,8 +203,8 @@ void MasterController::handlePost(http_request message) {
     }
 }
 
-MasterController::MasterController() {
-    MasterController::logManager = std::make_shared<services::LogManager>();
-    MasterController::workQueueManager = std::make_shared<services::WorkQueueManager>(MasterController::logManager);
-    MasterController::workQueueThread = std::thread(services::WorkQueueManager::main_loop, MasterController::workQueueManager);
+MasterController::MasterController(std::shared_ptr<services::LogManager> ptr,
+                                   std::shared_ptr<services::WorkQueueManager> sharedPtr) {
+    MasterController::logManager = ptr;
+    MasterController::workQueueManager = sharedPtr;
 }
