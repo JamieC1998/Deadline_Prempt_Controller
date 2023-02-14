@@ -3,6 +3,7 @@
 //
 
 #include <thread>
+#include <utility>
 #include "WorkQueueManager.h"
 #include "../../model/data_models/WorkItems/DAGDisruptItem/DAGDisruption.h"
 #include "../../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
@@ -12,11 +13,9 @@
 #include "../../utils/UtilFunctions/UtilFunctions.h"
 #include "../../Constants/CLIENT_DETAILS.h"
 #include "../HighCompServices/HighCompServices.h"
-#include "../../model/data_models/FTP_Lookup/FTP_Lookup.h"
 #include "../../Constants/AllocationMacros.h"
 #include "../../model/data_models/NetworkCommsModels/HighComplexityAllocation/HighComplexityAllocationComms.h"
 #include "../../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
-#include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
 #include "../../model/data_models/WorkItems/PruneItem/PruneItem.h"
 #include "../../model/data_models/NetworkCommsModels/OutboundUpdate/OutboundUpdate.h"
@@ -25,7 +24,7 @@
 namespace services {
     std::atomic<int> WorkQueueManager::thread_counter = 0;
 
-    void state_update_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+    void state_update_call(std::shared_ptr<model::WorkItem> item, std::shared_ptr<WorkQueueManager> queueManager) {
         std::shared_ptr<model::StateUpdate> stateUpdate = std::static_pointer_cast<model::StateUpdate>(item);
 
         std::unique_lock<std::mutex> off_lock(queueManager->offloaded_lock, std::defer_lock);
@@ -42,24 +41,48 @@ namespace services {
 
         dnn->tasks[stateUpdate->getConvidx()]->setCompleted(true);
 
+        bool completed = true;
+        for(auto [convidx, block]: dnn->tasks){
+            if(!block->isCompleted()) {
+                completed = false;
+                break;
+            }
+        }
+
+        if(completed){
+            web::json::value log;
+            log["dnn_details"] = dnn->convertToJson();
+            queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_FINISH, log);
+
+            auto pruneItem = std::make_shared<model::PruneItem>(enums::request_type::prune_dnn,
+                                                                dnn->getDnnId(),
+                                                                stateUpdate->getConvidx());
+            queueManager->add_task(pruneItem);
+        }
+
         off_lock.unlock();
         services::WorkQueueManager::decrementThreadCounter();
     }
 
-    void prune_dnn_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+    void prune_dnn_call(std::shared_ptr<model::WorkItem> item, std::shared_ptr<WorkQueueManager> queueManager) {
         auto prune_item = std::static_pointer_cast<model::PruneItem>(item);
 
+        /* TODO PRUNING DNN LOG HERE */
         /* Fetch the DNN details */
         std::string dnn_id = prune_item->getDnnId();
         std::string info_forward = prune_item->getNextConvBlock();
 
-        auto dnn = queueManager->getOffHigh()[dnn_id];
+        web::json::value log;
+        log["dnn_id"] = web::json::value::string(dnn_id);
+        queueManager->logManager->add_log(enums::LogTypeEnum::DNN_PRUNE, log);
+
+        auto dnn = queueManager->off_high[dnn_id];
 
         /* Remove the DNN from the DAG queues */
         std::unique_lock<std::mutex> off_lock(queueManager->offloaded_lock, std::defer_lock);
         off_lock.lock();
-        queueManager->getOffTotal().erase(dnn_id);
-        queueManager->getOffHigh().erase(dnn_id);
+        queueManager->off_total.erase(dnn_id);
+        queueManager->off_high.erase(dnn_id);
         off_lock.unlock();
 
         /* Begin iterating through the DNN to gather tasks and links to remove */
@@ -115,7 +138,7 @@ namespace services {
     }
 
     /*Function receives alow complexity DNN allocation request*/
-    void low_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+    void low_comp_allocation_call(std::shared_ptr<model::WorkItem> item, std::shared_ptr<WorkQueueManager> queueManager) {
         auto proc_item = std::static_pointer_cast<model::LowProcessingItem>(item);
 
         std::unique_lock<std::mutex> net_lock(queueManager->network_lock);
@@ -160,6 +183,7 @@ namespace services {
         auto time_window = result.second;
         /* If we cannot allocate a device for even one task we instead create a new allocation request and a halt request */
         if (!result.first) {
+
             auto workItem = std::make_shared<model::WorkItem>(enums::request_type::halt_req);
             queueManager->add_task(workItem);
             auto newTask = std::make_shared<model::LowProcessingItem>(item->getHostList(),
@@ -167,6 +191,13 @@ namespace services {
                                                                       proc_item->getDeadline(),
                                                                       proc_item->getDnnIdAndDevice());
             queueManager->add_task(std::static_pointer_cast<model::WorkItem>(newTask));
+
+            web::json::value log;
+            log["dnn_id"] = web::json::value::string(newTask->getDnnIdAndDevice().first);
+            queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL, log);
+            web::json::value halt_log;
+            halt_log["dnn_id"] = web::json::value::string(newTask->getDnnIdAndDevice().first);
+            queueManager->logManager->add_log(enums::LogTypeEnum::HALT_REQUEST, log);
             services::WorkQueueManager::decrementThreadCounter();
             return;
 
@@ -209,12 +240,15 @@ namespace services {
                     bR->getTask());
             queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
             net_lock.unlock();
+            web::json::value log;
+            log["dnn_details"] = bR->convertToJson();
+            queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS, log);
         }
         services::WorkQueueManager::decrementThreadCounter();
     }
 
 
-    void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+    void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, std::shared_ptr<WorkQueueManager> queueManager) {
         auto processingItem = std::static_pointer_cast<model::HighProcessingItem>(item);
         bool isReallocation = processingItem->isReallocation();
 
@@ -234,6 +268,11 @@ namespace services {
 
         //Will hold the actual link slots so we copy in the entire copied network link;
         std::vector<std::shared_ptr<model::LinkAct>> result_link_slots;
+
+
+        std::unique_lock<std::mutex> netlock(queueManager->network_lock, std::defer_lock);
+        netlock.lock();
+
 
         //Copying in the network link to our safe mutable copy
         std::copy(queueManager->network->getLink().begin(), queueManager->network->getLink().end(),
@@ -256,6 +295,8 @@ namespace services {
             std::copy(device->getTasks().begin(), device->getTasks().end(), tmp_task.begin());
             temp_device_task_list[device->getId()] = tmp_task;
         }
+
+        netlock.unlock();
 
         int j = (!isReallocation) ? 1 : baseResult->getLastCompleteConvIdx() + 1;
         /* This is where we store "successful task allocations" as we iterate through cores
@@ -297,7 +338,18 @@ namespace services {
                 continue;
 
             bool allocation_found = false;
-            for (int current_core = MAX_CORE_ALLOWANCE; current_core >= 1; current_core = current_core / 2) {
+            std::vector<int> core_config;
+            for (auto [key, value]: convolutional_block){
+                int core_key = std::stoi(key);
+                if (core_key <= MAX_CORE_ALLOWANCE){
+                    core_config.push_back(core_key);
+                }
+            }
+            std::sort(core_config.begin(), core_config.end(), [](int a, int b) {
+                return a > b;
+            });
+
+            for (int current_core: core_config) {
                 int CURRENT_N = convolutional_block[std::to_string(current_core)].getN();
                 int CURRENT_M = convolutional_block[std::to_string(current_core)].getM();
 
@@ -378,8 +430,15 @@ namespace services {
                     }
 
                         /* If partition fails we break and exit to the next core configuration */
-                    else
+                    else {
+                        web::json::value log;
+                        log["dnn_id"] = web::json::value::string(processingItem->getDnnId());
+                        log["convidx"] = web::json::value::string(convidx);
+                        log["current_core_config"] = web::json::value::number(current_core);
+                        log["failed_partition"] = web::json::value::number(i);
+                        queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_CORE_FAIL, log);
                         break;
+                    }
                 }
 
                 /* If we have allocated every task in the partition config
@@ -456,6 +515,10 @@ namespace services {
                 }
             }
             if (!allocation_found) {
+                web::json::value log;
+                log["dnn_id"] = web::json::value::string(processingItem->getDnnId());
+                log["reason"] = web::json::value::string("capacity");
+                queueManager->logManager->add_log((isReallocation) ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_FAIL : enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
                 services::WorkQueueManager::decrementThreadCounter();
                 return;
             }
@@ -463,17 +526,29 @@ namespace services {
             j++;
         }
 
+        int last_block = static_cast<int>(partition_allocations_per_block.size());
+        baseResult->setEstimatedFinish(
+                partition_allocations_per_block[std::to_string(last_block)]->getStateUpdateFinTime());
+
+        /* If we still cannot satisfy the deadline with the greediest approach
+         * exit */
+        if(baseResult->getEstimatedFinish() > processingItem->getDeadline()){
+            web::json::value log;
+            log["dnn_id"] = web::json::value::string(processingItem->getDnnId());
+            log["reason"] = web::json::value::string("deadline");
+            queueManager->logManager->add_log((isReallocation) ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_FAIL : enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
+            services::WorkQueueManager::decrementThreadCounter();
+            return;
+        }
+
+        netlock.lock();
         /* NEED TO ADD TASKS TO DEVICES AND COMMS TO THE LINK */
         queueManager->network->addComms(result_link_slots);
         for (auto [dev_id, task_list]: temp_device_task_list) {
             std::string host_name = task_list[0]->getAllocatedHost();
             queueManager->network->getDevices()[host_name]->setTasks(task_list);
         }
-
-        int last_block = static_cast<int>(partition_allocations_per_block.size());
-        baseResult->setEstimatedFinish(
-                partition_allocations_per_block[std::to_string(last_block)]->getStateUpdateFinTime());
-
+        netlock.unlock();
         //NEED TO ONLY UPLOAD FIRST TASK
         baseResult->tasks = partition_allocations_per_block;
 
@@ -495,13 +570,17 @@ namespace services {
         comm_task = std::static_pointer_cast<model::BaseNetworkCommsModel>(
                 high_comp_comms);
 
+        web::json::value log;
+        log["dnn"] = web::json::value(baseResult->convertToJson());
+        queueManager->logManager->add_log((isReallocation) ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_SUCCESS : enums::LogTypeEnum::HIGH_COMP_ALLOCATION_SUCCESS, log);
+
 
         queueManager->networkQueueManager->addTask(comm_task);
 
         services::WorkQueueManager::decrementThreadCounter();
     }
 
-    void dag_disruption_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+    void dag_disruption_call(std::shared_ptr<model::WorkItem> item, std::shared_ptr<WorkQueueManager> queueManager) {
         auto dag_item = std::static_pointer_cast<model::DAGDisruption>(item);
 
         //{parition_model_id: The unique DNN ID, convidx: the block group the partition belongs to, initial_dnn_id: the id assigned the partitioned block}
@@ -516,11 +595,12 @@ namespace services {
          * we exit */
         if (!queueManager->off_total.count(initial_dnn_id)) {
             services::WorkQueueManager::decrementThreadCounter();
+            offload_lock.unlock();
             return;
         }
 
         std::shared_ptr<model::HighCompResult> violated_dnn = std::static_pointer_cast<model::HighCompResult>(
-                queueManager->getOffTotal()[initial_dnn_id]);
+                queueManager->off_total[initial_dnn_id]);
         auto initial_conv_block = violated_dnn->tasks[initial_condidx];
         auto initial_task = initial_conv_block->partitioned_tasks[initial_partition_id];
         initial_task->setActualFinish(
@@ -549,8 +629,15 @@ namespace services {
                                                                 violated_dnn->getDnnId(),
                                                                 conv_block_to_update_to);
 
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_FAIL, log);
+
+
             queueManager->add_task(std::static_pointer_cast<model::WorkItem>(pruneItem));
             services::WorkQueueManager::decrementThreadCounter();
+            net_lock.unlock();
+            offload_lock.unlock();
             return;
 
         }
@@ -570,6 +657,12 @@ namespace services {
                     initial_assembly_upload_start_and_finish_time);
         } else {
             /* Otherwise no significant violation has occurred and we can leave things as they are*/
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_SUCCESS, log);
+            services::WorkQueueManager::decrementThreadCounter();
+            net_lock.unlock();
+            offload_lock.unlock();
             return;
         }
 
@@ -580,6 +673,12 @@ namespace services {
             initial_conv_block->setStateUpdateFinTime(initial_conv_block->getStateUpdateFinTime());
         } else {
             /* Otherwise no significant violation has occurred and we can leave things as they are*/
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_SUCCESS, log);
+            net_lock.unlock();
+            offload_lock.unlock();
+            services::WorkQueueManager::decrementThreadCounter();
             return;
         }
 
@@ -595,7 +694,12 @@ namespace services {
             initial_conv_block->setStateUpdateFinTime(initial_state_update_start_fin.second);
         } else {
             /* Otherwise no significant violation has occurred and we can leave things as they are*/
-            return;
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_SUCCESS, log);
+            net_lock.unlock();
+            offload_lock.unlock();
+            services::WorkQueueManager::decrementThreadCounter();
         }
 
         /* If this is set to true during iteration,
@@ -705,6 +809,9 @@ namespace services {
                                                                 violated_dnn->getDnnId(),
                                                                 conv_block_to_update_to);
 
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_FAIL, log);
             queueManager->add_task(std::static_pointer_cast<model::WorkItem>(pruneItem));
         } else {
             uint64_t old_version = violated_dnn->getVersion();
@@ -712,6 +819,11 @@ namespace services {
             auto outboundUpdate = std::make_shared<model::OutboundUpdate>(enums::network_comms_types::task_update,
                                                                           std::chrono::system_clock::now(),
                                                                           violated_dnn, conv_block_to_update_to, old_version);
+
+            web::json::value log;
+            log["dnn_id"] = web::json::value(violated_dnn->getDnnId());
+            queueManager->logManager->add_log(enums::LogTypeEnum::DAG_DISRUPTION_SUCCESS, log);
+
             queueManager->networkQueueManager->addTask(
                     std::static_pointer_cast<model::BaseNetworkCommsModel>(outboundUpdate));
         }
@@ -719,7 +831,7 @@ namespace services {
         services::WorkQueueManager::decrementThreadCounter();
     }
 
-    void halt_call(WorkQueueManager *queueManager) {
+    void halt_call(std::shared_ptr<WorkQueueManager> queueManager) {
         std::vector<std::string> hostList;
         for (auto [host_id, host]: queueManager->network->getDevices()) {
             hostList.push_back(host_id);
@@ -824,7 +936,6 @@ namespace services {
         network_lock.unlock();
         offload_lock.unlock();
 
-        /* TODO NEED TO CALL REALLOCATION FUNCTION HERE */
         for (auto dnn: highProcessingList) {
             std::string last_complete_conv = std::to_string(dnn->getLastCompleteConvIdx());
             std::string data_host = dnn->tasks[last_complete_conv]->getAssemblyHost();
@@ -842,6 +953,9 @@ namespace services {
 
     void WorkQueueManager::add_task(std::shared_ptr<model::WorkItem> item) {
         std::unique_lock<std::mutex> lk(WorkQueueManager::work_queue_lock, std::defer_lock);
+
+        web::json::value log;
+        WorkQueueManager::logManager->add_log(enums::LogTypeEnum::ADD_WORK_TASK, log);
         lk.lock();
         /* No more than one halt request can be present at any one time, if we find a DAG disruption request in the list
          * when we add a halt to the queue then we need to remove it, as a halt request will lead to full reallocation
@@ -898,56 +1012,56 @@ namespace services {
         lk.unlock();
     }
 
-    [[noreturn]] void WorkQueueManager::main_loop() {
-        std::unique_lock<std::mutex> lk(WorkQueueManager::work_queue_lock, std::defer_lock);
+    [[noreturn]] void WorkQueueManager::main_loop(const std::shared_ptr<WorkQueueManager>& queueManager) {
+        std::unique_lock<std::mutex> lk(queueManager->work_queue_lock, std::defer_lock);
         while (true) {
-            WorkQueueManager::current_task.clear();
-            WorkQueueManager::thread_counter = 0;
+            queueManager->current_task.clear();
+            queueManager->thread_counter = 0;
 
-            if (!WorkQueueManager::work_queue.empty()) {
+            if (!queueManager->work_queue.empty()) {
                 lk.lock();
 
-                WorkQueueManager::thread_counter++;
-                current_task.push_back(WorkQueueManager::work_queue.front());
-                WorkQueueManager::work_queue.erase(WorkQueueManager::work_queue.begin());
+                queueManager->thread_counter++;
+                queueManager->current_task.push_back(queueManager->work_queue.front());
+                queueManager->work_queue.erase(queueManager->work_queue.begin());
 
                 lk.unlock();
 
                 std::vector<std::thread> thread_pool;
-                switch (current_task.front()->getRequestType()) {
+                switch (queueManager->current_task.front()->getRequestType()) {
                     case enums::request_type::low_complexity:
-                        thread_pool.emplace_back(low_comp_allocation_call, current_task.front(), this);
+                        thread_pool.emplace_back(low_comp_allocation_call, queueManager->current_task.front(), queueManager);
                         break;
                     case enums::request_type::high_complexity:
-                        thread_pool.emplace_back(high_comp_allocation_call, current_task.front(), this);
+                        thread_pool.emplace_back(high_comp_allocation_call, queueManager->current_task.front(), queueManager);
                         break;
                     case enums::request_type::dag_disruption:
-                        thread_pool.emplace_back(dag_disruption_call, current_task.front(), this);
+                        thread_pool.emplace_back(dag_disruption_call, queueManager->current_task.front(), queueManager);
                         break;
                     case enums::request_type::prune_dnn:
-                        thread_pool.emplace_back(prune_dnn_call, current_task.front(), this);
+                        thread_pool.emplace_back(prune_dnn_call, queueManager->current_task.front(), queueManager);
                         break;
                     case enums::request_type::halt_req:
-                        thread_pool.emplace_back(halt_call, this);
+                        thread_pool.emplace_back(halt_call, queueManager);
                         break;
                     case enums::request_type::state_update:
-                        thread_pool.emplace_back(state_update_call, current_task.front(), this);
+                        thread_pool.emplace_back(state_update_call, queueManager->current_task.front(), queueManager);
                         break;
                 }
 
                 /* We wait for the current work items to terminate */
-                while (WorkQueueManager::thread_counter > 0) {
+                while (queueManager->thread_counter > 0) {
                     lk.lock();
-                    if (WorkQueueManager::work_queue.front()->getRequestType() == enums::request_type::low_complexity) {
+                    if (queueManager->work_queue.front()->getRequestType() == enums::request_type::low_complexity) {
                         /* If more low complexity tasks are added to the queue then we append them to the current
                          * work list */
-                        while (WorkQueueManager::work_queue.front()->getRequestType() ==
+                        while (queueManager->work_queue.front()->getRequestType() ==
                                enums::request_type::low_complexity) {
-                            WorkQueueManager::thread_counter++;
-                            thread_pool.emplace_back(low_comp_allocation_call, WorkQueueManager::work_queue.front(),
-                                                     this);
-                            current_task.push_back(WorkQueueManager::work_queue.front());
-                            WorkQueueManager::work_queue.erase(WorkQueueManager::work_queue.begin());
+                            queueManager->thread_counter++;
+                            thread_pool.emplace_back(low_comp_allocation_call, queueManager->work_queue.front(),
+                                                     queueManager);
+                            queueManager->current_task.push_back(queueManager->work_queue.front());
+                            queueManager->work_queue.erase(queueManager->work_queue.begin());
                         }
                     }
                     lk.unlock();
@@ -979,21 +1093,12 @@ namespace services {
         WorkQueueManager::jitter = jitter;
     }
 
-    std::map<std::string, std::shared_ptr<model::BaseCompResult>> &WorkQueueManager::getOffTotal() {
-        return off_total;
-    }
-
-    std::map<std::string, std::shared_ptr<model::LowCompResult>> &WorkQueueManager::getOffLow() {
-        return off_low;
-    }
-
-    std::map<std::string, std::shared_ptr<model::HighCompResult>> &WorkQueueManager::getOffHigh() {
-        return off_high;
-    }
-
-    WorkQueueManager::WorkQueueManager() {
-        WorkQueueManager::lookup_table = utils::parseDNN();
+    WorkQueueManager::WorkQueueManager(std::shared_ptr<services::LogManager> ptr): logManager(std::move(ptr)) {
+        WorkQueueManager::lookup_table = utils::parseFTP_Lookup();
         WorkQueueManager::state_size = utils::calculateSizeOfInputData(lookup_table);
+        WorkQueueManager::network = std::make_shared<model::Network>();
+        WorkQueueManager::networkQueueManager = std::make_shared<services::NetworkQueueManager>(ptr);
+        WorkQueueManager::network_comms_thread = std::thread(services::NetworkQueueManager::initNetworkCommLoop,WorkQueueManager::networkQueueManager);
     }
 
     double WorkQueueManager::getBytesPerMillisecond() {

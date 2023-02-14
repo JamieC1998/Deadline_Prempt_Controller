@@ -23,7 +23,7 @@ namespace services {
         std::shared_ptr<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>> time_window;
         std::shared_ptr<std::map<std::string, std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>> result;
 
-        auto pI = static_pointer_cast<model::LowProcessingItem>(pItem);
+        auto pI = std::static_pointer_cast<model::LowProcessingItem>(pItem);
         auto [dnn_id, host] = pI->getDnnIdAndDevice();
 
         std::chrono::system_clock::duration dr =

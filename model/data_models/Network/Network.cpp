@@ -5,8 +5,6 @@
 #include "Network.h"
 
 namespace model {
-    Network::Network(const std::map<std::string, std::shared_ptr<ComputationDevice>> &devices) : devices(devices) {}
-
     std::map<std::string, std::shared_ptr<ComputationDevice>> &Network::getDevices() {
         return devices;
     }
@@ -29,5 +27,8 @@ namespace model {
         std::sort(network_link.begin(), network_link.end(), [](const std::shared_ptr<LinkAct>& a, const std::shared_ptr<LinkAct>& b) {
             return a->getStartFinTime().second < b->getStartFinTime().second;
         });
+    }
+
+    Network::Network() {
     }
 } // model

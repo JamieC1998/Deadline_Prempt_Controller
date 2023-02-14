@@ -18,7 +18,7 @@ namespace utils {
     uint64_t calculateSizeOfInputData(std::shared_ptr<model::FTP_Lookup> lookup_table);
     unsigned long calculateStateUpdateSize();
     std::ifstream::pos_type filesize(std::string filename);
-    std::shared_ptr<model::FTP_Lookup> parseDNN();
+    std::shared_ptr<model::FTP_Lookup> parseFTP_Lookup();
 
     std::pair<int, int> fetchN_M(int position, int width, int height);
 } // utils

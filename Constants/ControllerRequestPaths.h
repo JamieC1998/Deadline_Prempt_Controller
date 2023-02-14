@@ -11,6 +11,7 @@ namespace constants {
 #define LOW_OFFLOAD_REQUEST "low_offload_request"
 #define DEVICE_REGISTER_REQUEST "register_device"
 #define STATE_UPDATE "state_update"
+#define LOG_RESULT "/log_result"
 }
 
 #endif //CONTROLLER_CONTROLLERREQUESTPATHS_H

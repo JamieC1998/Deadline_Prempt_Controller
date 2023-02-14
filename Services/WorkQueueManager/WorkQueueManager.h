@@ -15,16 +15,17 @@
 #include "../NetworkQueueManager/NetworkQueueManager.h"
 #include "../../model/data_models/FTP_Lookup/FTP_Lookup.h"
 #include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
+#include "../LOG_MANAGER/LogManager.h"
 
 namespace services {
 
     class WorkQueueManager {
     public:
-        WorkQueueManager();
+        explicit WorkQueueManager(std::shared_ptr<services::LogManager> ptr);
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
-        [[noreturn]] void main_loop();
+        [[noreturn]] static void main_loop(const std::shared_ptr<WorkQueueManager>& queueManager);
 
         static void decrementThreadCounter();
 
@@ -44,18 +45,14 @@ namespace services {
 
         void setJitter(double jitter);
 
-        std::map<std::string, std::shared_ptr<model::BaseCompResult>> &getOffTotal();
-
-        std::map<std::string, std::shared_ptr<model::LowCompResult>> &getOffLow();
-
-        static std::map<std::string, std::shared_ptr<model::HighCompResult>> &getOffHigh();
-
         std::shared_ptr<model::FTP_Lookup> lookup_table;
         uint64_t state_size = 0;
 
         std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
         std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
-        static std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
+        std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
+        std::thread network_comms_thread;
+        std::shared_ptr<services::LogManager> logManager;
     private:
         static std::atomic<int> thread_counter;
         std::vector<std::shared_ptr<model::WorkItem>> current_task;
@@ -65,17 +62,17 @@ namespace services {
         double jitter = 0.0;
     };
 
-    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
 
-    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
 
-    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
 
-    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
 
-    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
 
-    static void halt_call(WorkQueueManager* queueManager);
+    static void halt_call(std::shared_ptr<WorkQueueManager> queueManager);
 
 } // services
 

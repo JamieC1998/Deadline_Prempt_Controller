@@ -25,38 +25,71 @@ namespace services {
         return networkMutex;
     }
 
-    [[noreturn]] void NetworkQueueManager::initNetworkCommLoop() {
-        std::unique_lock<std::mutex> lock(networkMutex, std::defer_lock);
+    [[noreturn]] void
+    NetworkQueueManager::initNetworkCommLoop(std::shared_ptr<services::NetworkQueueManager> queueManager) {
+        std::unique_lock<std::mutex> lock(queueManager->networkMutex, std::defer_lock);
         while (true) {
             lock.lock();
 
-            if (comms.front()->getCommTime() <= std::chrono::system_clock::now()) {
-                std::shared_ptr<model::BaseNetworkCommsModel> comms_model = comms.front();
-                comms.erase(comms.begin());
+            if (!queueManager->comms.empty() && queueManager->comms.front()->getCommTime() <= std::chrono::system_clock::now()) {
+                std::shared_ptr<model::BaseNetworkCommsModel> comms_model = queueManager->comms.front();
+                queueManager->comms.erase(queueManager->comms.begin());
                 lock.unlock();
                 switch (comms_model->getType()) {
                     case enums::network_comms_types::halt_req:
-                        haltReq(comms_model, this);
+                        haltReq(comms_model, queueManager);
                         break;
                     case enums::network_comms_types::high_complexity_task_mapping:
-                        highTaskAllocation(comms_model, this);
+                        highTaskAllocation(comms_model, queueManager);
                         break;
                     case enums::network_comms_types::task_update:
-                        taskUpdate(comms_model, this);
+                        taskUpdate(comms_model, queueManager);
                         break;
                     case enums::network_comms_types::low_complexity_allocation:
-                        lowTaskAllocation(comms_model, this);
+                        lowTaskAllocation(comms_model, queueManager);
                         break;
                     case enums::network_comms_types::high_complexity_task_reallocation:
-                        highTaskReallocation(comms_model, this);
+                        highTaskReallocation(comms_model, queueManager);
                         break;
+                    case enums::network_comms_types::initial_experiment_start:
+                        initialise_experiment(queueManager);
                 }
             } else
                 lock.unlock();
         }
     }
 
-    void taskUpdate(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+    void initialise_experiment(std::shared_ptr<services::NetworkQueueManager> queueManager) {
+        web::json::value log;
+        queueManager->logManager->add_log(enums::LogTypeEnum::EXPERIMENT_INITIALISE, log);
+
+        std::chrono::time_point<std::chrono::system_clock> start_time =
+                std::chrono::system_clock::now() + std::chrono::seconds(3);
+
+        auto milliseconds_since_epoch =
+                std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch());
+
+        uint64_t millis = milliseconds_since_epoch.count();
+
+        json::value result;
+        result["start_time"] = web::json::value::number(millis);
+
+        for (auto hostName: queueManager->getHosts()){
+            auto client = http::client::http_client(hostName).request(http::methods::POST,
+                                                                      U(":" + std::string(LOW_COMP_PORT) + "/" +
+                                                                        SET_EXPERIMENT_START),
+                                                                      result.serialize()).then(
+                    [](web::http::http_response response) {
+                        // No need to wait, just log the status code
+                        std::cout << "Status code: " << response.status_code() << std::endl;
+                    });
+
+            client.wait();
+        }
+    }
+
+    void taskUpdate(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                    std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto taskUpdate = std::static_pointer_cast<model::OutboundUpdate>(comm_model);
         std::shared_ptr<model::HighCompResult> br = taskUpdate->getDnn();
 
@@ -66,6 +99,12 @@ namespace services {
         json::value result;
         result[U("dnn")] = json::value(taskStructure);
         result[U("old_version")] = json::value::number(taskUpdate->getOldVersion());
+
+        web::json::value log;
+        log["old_version_id"] = web::json::value::number(taskUpdate->getOldVersion());
+        log["dnn"] = web::json::value(taskStructure);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_STATE_UPDATE, log);
 
         for (auto hostName: queueManager->getHosts()) {
             result[U("host")] = json::value::string(hostName);
@@ -83,7 +122,8 @@ namespace services {
     }
 
     void
-    highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+    highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                       std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto highCompComm = std::static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
         std::shared_ptr<model::HighCompResult> br = highCompComm->getAllocatedTask();
         std::string hostName = highCompComm->getHost();
@@ -93,6 +133,12 @@ namespace services {
         json::value task_json = br->convertToJson();
 
         json::value output;
+
+        web::json::value log;
+        log["dnn"] = web::json::value(br->convertToJson());
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_ALLOCATION_HIGH, log);
+
         output[U("starting_conv")] = json::value::string(current_conv);
         output[U("dnn")] = json::value(task_json);
 
@@ -107,7 +153,8 @@ namespace services {
     }
 
     void
-    highTaskReallocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+    highTaskReallocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                         std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto reallocationComm = static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
         auto hostName = reallocationComm->getHost();
         auto dnn = reallocationComm->getAllocatedTask();
@@ -117,6 +164,12 @@ namespace services {
         json::value output;
         output[U("starting_conv")] = json::value::string(conv_idx_to_update);
         output[U("dnn")] = json::value(task_json);
+
+        web::json::value log;
+        log["dnn"] = web::json::value(dnn->convertToJson());
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_REALLOCATION_HIGH, log);
+
 
         http::client::http_client(hostName).request(http::methods::POST,
                                                     U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
@@ -129,12 +182,17 @@ namespace services {
     }
 
 
-    void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+    void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                 std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto haltCommModel = static_pointer_cast<model::HaltNetworkCommsModel>(comm_model);
 
         web::json::value result;
 
-        for(auto [key, value]: haltCommModel->getVersionMap())
+        web::json::value log;
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_HALT_REQUEST, log);
+
+        for (auto [key, value]: haltCommModel->getVersionMap())
             result[key] = web::json::value::number(value);
 
         for (const auto &host: queueManager->getHosts()) {
@@ -156,7 +214,8 @@ namespace services {
     }
 
     void
-    lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, NetworkQueueManager *queueManager) {
+    lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                      std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto lowCompComm = static_pointer_cast<model::LowComplexityAllocationComms>(comm_model);
         auto task_res = lowCompComm->getAllocatedTask();
         std::string host = lowCompComm->getHost();
@@ -168,6 +227,11 @@ namespace services {
         result["finish_time"] = json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
                 task_res->getEstimatedFinish().time_since_epoch()).count());
 
+        web::json::value log;
+        log["dnn"] = web::json::value(task_res->convertToJson());
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
+
         web::http::client::http_client(host).request(web::http::methods::POST,
                                                      ":" + std::string(LOW_COMP_PORT) + "/" +
                                                      std::string(LOW_TASK_ALLOCATION), result.serialize())
@@ -177,19 +241,33 @@ namespace services {
     }
 
     void NetworkQueueManager::addTask(std::shared_ptr<model::BaseNetworkCommsModel> comm_model) {
-        std::unique_lock<std::mutex> lock(networkMutex, std::defer_lock);
+        std::unique_lock<std::mutex> lock(NetworkQueueManager::networkMutex, std::defer_lock);
         lock.lock();
 
+        web::json::value log;
+        NetworkQueueManager::logManager->add_log(enums::LogTypeEnum::ADD_NETWORK_TASK, log);
+
         if (comm_model->getType() != enums::network_comms_types::halt_req) {
-            comms.push_back(comm_model);
-            std::sort(comms.begin(), comms.end(), [](const std::shared_ptr<model::BaseNetworkCommsModel> &a,
-                                                     const std::shared_ptr<model::BaseNetworkCommsModel> &b) -> bool {
-                return a->getCommTime() < b->getCommTime();
-            });
+            NetworkQueueManager::comms.push_back(comm_model);
+            std::sort(NetworkQueueManager::comms.begin(), NetworkQueueManager::comms.end(),
+                      [](const std::shared_ptr<model::BaseNetworkCommsModel> &a,
+                         const std::shared_ptr<model::BaseNetworkCommsModel> &b) -> bool {
+                          return a->getCommTime() < b->getCommTime();
+                      });
         } else {
-            //TODO PRUNE EVERYTHING EXCEPT LOW COMP
-            comms.clear();
-            comms.push_back(comm_model);
+            std::vector<std::shared_ptr<model::BaseNetworkCommsModel>> new_list;
+
+            for (auto element: NetworkQueueManager::comms)
+                if (element->getType() == enums::network_comms_types::low_complexity_allocation)
+                    new_list.push_back(element);
+            NetworkQueueManager::comms = new_list;
+            NetworkQueueManager::comms.push_back(comm_model);
+
+            std::sort(NetworkQueueManager::comms.begin(), NetworkQueueManager::comms.end(),
+                      [](const std::shared_ptr<model::BaseNetworkCommsModel> &a,
+                         const std::shared_ptr<model::BaseNetworkCommsModel> &b) -> bool {
+                          return a->getCommTime() < b->getCommTime();
+                      });
         }
 
         lock.unlock();
@@ -199,5 +277,5 @@ namespace services {
         return hosts;
     }
 
-    NetworkQueueManager::NetworkQueueManager(const vector <std::string> &hosts) : hosts(hosts) {}
+    NetworkQueueManager::NetworkQueueManager(std::shared_ptr<services::LogManager> ptr): logManager(ptr) {}
 }

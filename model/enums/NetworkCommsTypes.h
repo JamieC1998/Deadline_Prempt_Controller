@@ -6,7 +6,7 @@
 #define CONTROLLER_NETWORKCOMMSTYPES_H
 
 namespace enums{
-    enum class network_comms_types { halt_req = 0, task_update = 1, low_complexity_allocation = 2, high_complexity_task_mapping = 3, high_complexity_task_reallocation = 4 };
+    enum class network_comms_types { initial_experiment_start = 0, halt_req = 1, task_update = 2, low_complexity_allocation = 3, high_complexity_task_mapping = 4, high_complexity_task_reallocation = 5 };
 }
 
 #endif //CONTROLLER_NETWORKCOMMSTYPES_H
