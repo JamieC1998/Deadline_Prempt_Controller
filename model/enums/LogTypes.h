@@ -35,9 +35,7 @@ namespace enums {
         OUTBOUND_LOW_COMP_ALLOCATION = 25,
         ADD_NETWORK_TASK = 26,
         HIGH_COMP_REALLOCATION_SUCCESS = 27,
-
-
-
+        OUTBOUND_PRUNE = 28
     };
 
 } // model

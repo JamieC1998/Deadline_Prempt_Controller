@@ -25,7 +25,7 @@ namespace services {
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
-        [[noreturn]] static void main_loop(std::shared_ptr<WorkQueueManager> queueManager);
+        [[noreturn]] static void main_loop(WorkQueueManager* queueManager);
 
         static void decrementThreadCounter();
 
@@ -61,17 +61,17 @@ namespace services {
         double jitter = 0.0;
     };
 
-    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
+    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
+    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
+    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
+    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, std::shared_ptr<WorkQueueManager> queueManager);
+    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void halt_call(std::shared_ptr<WorkQueueManager> queueManager);
+    static void halt_call(WorkQueueManager* queueManager);
 
 } // services
 

@@ -14,6 +14,7 @@
 #include "../../model/data_models/NetworkCommsModels/OutboundUpdate/OutboundUpdate.h"
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
 #include "../../model/data_models/NetworkCommsModels/HaltNetworkCommsModel/HaltNetworkCommsModel.h"
+#include "../../model/data_models/NetworkCommsModels/OutboundPrune/OutboundPrune.h"
 
 using namespace std;
 using namespace web;
@@ -26,35 +27,46 @@ namespace services {
 
     [[noreturn]] void
     NetworkQueueManager::initNetworkCommLoop(std::shared_ptr<services::NetworkQueueManager> queueManager) {
-        std::unique_lock<std::mutex> lock(queueManager->networkMutex, std::defer_lock);
-        while (true) {
-            lock.lock();
+        try {
+            std::unique_lock<std::mutex> lock(queueManager->networkMutex, std::defer_lock);
+            while (true) {
+                lock.lock();
 
-            if (!queueManager->comms.empty() && queueManager->comms.front()->getCommTime() <= std::chrono::system_clock::now()) {
-                std::shared_ptr<model::BaseNetworkCommsModel> comms_model = queueManager->comms.front();
-                queueManager->comms.erase(queueManager->comms.begin());
-                lock.unlock();
-                switch (comms_model->getType()) {
-                    case enums::network_comms_types::halt_req:
-                        haltReq(comms_model, queueManager);
-                        break;
-                    case enums::network_comms_types::high_complexity_task_mapping:
-                        highTaskAllocation(comms_model, queueManager);
-                        break;
-                    case enums::network_comms_types::task_update:
-                        taskUpdate(comms_model, queueManager);
-                        break;
-                    case enums::network_comms_types::low_complexity_allocation:
-                        lowTaskAllocation(comms_model, queueManager);
-                        break;
-                    case enums::network_comms_types::high_complexity_task_reallocation:
-                        highTaskReallocation(comms_model, queueManager);
-                        break;
-                    case enums::network_comms_types::initial_experiment_start:
-                        initialise_experiment(queueManager);
-                }
-            } else
-                lock.unlock();
+                if (!queueManager->comms.empty() &&
+                    queueManager->comms.front()->getCommTime() <= std::chrono::system_clock::now()) {
+                    std::shared_ptr<model::BaseNetworkCommsModel> comms_model = queueManager->comms.front();
+                    queueManager->comms.erase(queueManager->comms.begin());
+                    lock.unlock();
+                    switch (comms_model->getType()) {
+                        case enums::network_comms_types::halt_req:
+                            haltReq(comms_model, queueManager);
+                            break;
+                        case enums::network_comms_types::high_complexity_task_mapping:
+                            highTaskAllocation(comms_model, queueManager);
+                            break;
+                        case enums::network_comms_types::task_update:
+                            taskUpdate(comms_model, queueManager);
+                            break;
+                        case enums::network_comms_types::low_complexity_allocation:
+                            lowTaskAllocation(comms_model, queueManager);
+                            break;
+                        case enums::network_comms_types::high_complexity_task_reallocation:
+                            highTaskReallocation(comms_model, queueManager);
+                            break;
+                        case enums::network_comms_types::initial_experiment_start:
+                            initialise_experiment(queueManager);
+                            break;
+                        case enums::network_comms_types::prune_dnn:
+                            pruneDNN(comms_model, queueManager);
+                            break;
+                    }
+                } else
+                    lock.unlock();
+            }
+        }
+        catch (std::exception &e) {
+            std::cerr << "something wrong has happened! ;)" << '\n';
+            std::cerr << e.what() << "\n";
         }
     }
 
@@ -73,11 +85,11 @@ namespace services {
         json::value result;
         result["start_time"] = web::json::value::number(millis);
 
-        for (auto hostName: queueManager->getHosts()){
-            auto client = http::client::http_client(hostName).request(http::methods::POST,
-                                                                      U(":" + std::string(LOW_COMP_PORT) + "/" +
-                                                                        SET_EXPERIMENT_START),
-                                                                      result.serialize()).then(
+        for (const auto &hostName: queueManager->getHosts()) {
+            auto client = http::client::http_client("http://" + hostName + ":" + std::string(LOW_COMP_PORT)).request(
+                    http::methods::POST,
+                    U("/" + std::string(SET_EXPERIMENT_START)),
+                    result.serialize()).then(
                     [](web::http::http_response response) {
                         // No need to wait, just log the status code
                         std::cout << "Status code: " << response.status_code() << std::endl;
@@ -102,15 +114,16 @@ namespace services {
         web::json::value log;
         log["old_version_id"] = web::json::value::number(taskUpdate->getOldVersion());
         log["dnn"] = web::json::value(taskStructure);
-        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_STATE_UPDATE, log);
 
-        for (auto hostName: queueManager->getHosts()) {
+        for (const auto &hostName: queueManager->getHosts()) {
             result[U("host")] = json::value::string(hostName);
-            auto client = http::client::http_client(hostName).request(http::methods::POST,
-                                                                      U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                                        TASK_UPDATE),
-                                                                      result.serialize()).then(
+            auto client = http::client::http_client("http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT)).request(
+                    http::methods::POST, "/" +
+                                         std::string(TASK_UPDATE),
+                    result.serialize()).then(
                     [](web::http::http_response response) {
                         // No need to wait, just log the status code
                         std::cout << "Status code: " << response.status_code() << std::endl;
@@ -135,20 +148,35 @@ namespace services {
 
         web::json::value log;
         log["dnn"] = web::json::value(br->convertToJson());
-        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_ALLOCATION_HIGH, log);
 
         output[U("starting_conv")] = json::value::string(current_conv);
         output[U("dnn")] = json::value(task_json);
 
-        http::client::http_client(hostName).request(http::methods::POST,
-                                                    U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                      HIGH_TASK_ALLOCATION),
-                                                    output.serialize()).then(
-                [](web::http::http_response response) {
-                    // No need to wait, just log the status code
-                    std::cout << "Status code: " << response.status_code() << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> comm_start = std::chrono::system_clock::now();
+        std::string baseURI = "http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT);
+        std::cout << "HIGH_COMP_ALLOCATION: " << baseURI << "/" << std::string(HIGH_TASK_ALLOCATION) << std::endl;
+        http::client::http_client(baseURI).request(
+                http::methods::POST,
+                "/" +
+                std::string(HIGH_TASK_ALLOCATION),
+                output.serialize()).then(
+                [comm_start, br, highCompComm](web::http::http_response response) {
+                    try {
+                        std::mutex* mut = highCompComm->getMut();
+                        std::unique_lock uniqueLock(*mut, std::defer_lock);
+                        uniqueLock.lock();
+                        br->getUploadData()->setActualStartFinTime(std::make_pair(comm_start, std::chrono::system_clock::now()));
+                        uniqueLock.unlock();
+                        std::cout << "Status code: " << response.status_code() << std::endl;
+                    }
+                    catch (exception e) {
+                        std::cout << e.what() << std::endl;
+                    }
                 });
+
     }
 
     void
@@ -166,18 +194,47 @@ namespace services {
 
         web::json::value log;
         log["dnn"] = web::json::value(dnn->convertToJson());
-        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_REALLOCATION_HIGH, log);
 
 
-        http::client::http_client(hostName).request(http::methods::POST,
-                                                    U(":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                      HIGH_TASK_REALLOCATION),
-                                                    output.serialize()).then(
+        http::client::http_client("http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT)).request(
+                http::methods::POST,
+                "/" +
+                std::string(HIGH_TASK_REALLOCATION),
+                output.serialize()).then(
                 [](web::http::http_response response) {
                     // No need to wait, just log the status code
                     std::cout << "Status code: " << response.status_code() << std::endl;
                 });
+    }
+
+
+    void pruneDNN(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                  std::shared_ptr<services::NetworkQueueManager> queueManager) {
+        auto pruneModel = static_pointer_cast<model::OutboundPrune>(comm_model);
+        std::string dnn_id = pruneModel->getDnnId();
+
+        web::json::value result;
+        web::json::value log;
+        log["dnn_id"] = web::json::value::string(dnn_id);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        result["dnn_id"] = web::json::value::string(dnn_id);
+
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_PRUNE, log);
+
+        for (const auto &host: queueManager->getHosts()) {
+            auto client = web::http::client::http_client(
+                    "http://" + host + ":" + std::string(HIGH_CLIENT_PORT)).request(web::http::methods::POST,
+                                                                                    "/" +
+                                                                                    std::string(PRUNE_ENDPOINT),
+                                                                                    result.serialize())
+                    .then([](web::http::http_response response) {
+                    });
+        }
+
     }
 
 
@@ -188,7 +245,8 @@ namespace services {
         web::json::value result;
 
         web::json::value log;
-        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_HALT_REQUEST, log);
 
         for (auto [key, value]: haltCommModel->getVersionMap())
@@ -196,9 +254,11 @@ namespace services {
 
         for (const auto &host: queueManager->getHosts()) {
 
-            auto client = web::http::client::http_client(host).request(web::http::methods::POST,
-                                                                       ":" + std::string(HIGH_CLIENT_PORT) + "/" +
-                                                                       std::string(HALT_ENDPOINT), result.serialize())
+            auto client = web::http::client::http_client(
+                    "http://" + host + ":" + std::string(HIGH_CLIENT_PORT)).request(web::http::methods::POST,
+                                                                                    "/" +
+                                                                                    std::string(HALT_ENDPOINT),
+                                                                                    result.serialize())
                     .then([](web::http::http_response response) {
                     });
 
@@ -228,12 +288,13 @@ namespace services {
 
         web::json::value log;
         log["dnn"] = web::json::value(task_res->convertToJson());
-        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
 
-        web::http::client::http_client(host).request(web::http::methods::POST,
-                                                     ":" + std::string(LOW_COMP_PORT) + "/" +
-                                                     std::string(LOW_TASK_ALLOCATION), result.serialize())
+        web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(
+                        web::http::methods::POST,
+                        "/" + std::string(LOW_TASK_ALLOCATION), result.serialize())
                 .then([](web::http::http_response response) {
                     std::cout << "Status code: " << response.status_code() << std::endl;
                 });
@@ -276,5 +337,5 @@ namespace services {
         return hosts;
     }
 
-    NetworkQueueManager::NetworkQueueManager(std::shared_ptr<services::LogManager> ptr): logManager(ptr) {}
+    NetworkQueueManager::NetworkQueueManager(std::shared_ptr<services::LogManager> ptr) : logManager(ptr) {}
 }

@@ -22,7 +22,10 @@ namespace services {
         result_json_obj["message_content"] = web::json::value(std::move(log));
 
         log_list.push_back(result_json_obj);
-        logLock.release();
+
+        std::cout << result_json_obj.serialize() << std::endl;
+
+        logLock.unlock();
     }
 
     std::string LogManager::write_log() {
@@ -98,6 +101,8 @@ namespace services {
                 return "ADD_NETWORK_TASK";
             case enums::LogTypeEnum::HIGH_COMP_REALLOCATION_SUCCESS:
                 return "HIGH_COMP_REALLOCATION_SUCCESS";
+            case enums::LogTypeEnum::OUTBOUND_PRUNE:
+                return "OUTBOUND_PRUNE";
         }
         return "NaN";
     }

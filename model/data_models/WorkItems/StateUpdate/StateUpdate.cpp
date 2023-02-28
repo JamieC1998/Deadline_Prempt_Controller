@@ -9,17 +9,17 @@
 namespace model {
 
     StateUpdate::StateUpdate(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
-                             std::map<int, std::chrono::time_point<std::chrono::system_clock>> finishTimes,
+                             std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> finishTimes,
                              std::string convidx, std::string dnnId) : WorkItem(hostList, requestType),
                                                                                      finish_times(std::move(finishTimes)),
                                                                                      convidx(std::move(convidx)), dnn_id(std::move(dnnId)) {}
 
-    const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &StateUpdate::getFinishTimes() const {
+    const std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> &StateUpdate::getFinishTimes() const {
         return finish_times;
     }
 
     void
-    StateUpdate::setFinishTimes(const std::map<int, std::chrono::time_point<std::chrono::system_clock>> &finishTimes) {
+    StateUpdate::setFinishTimes(const std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> &finishTimes) {
         finish_times = finishTimes;
     }
 

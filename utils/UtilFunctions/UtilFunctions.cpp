@@ -99,17 +99,19 @@ namespace utils {
 
     /* Function calculates the N * M position of a task given its flatteened index */
     std::pair<int, int> fetchN_M(int position, int width, int height) {
-        int counter = 0;
-        int N = 0;
-        int M = 0;
-        for(int i = 0; i < height; i++){
+        position = position + 1;
+        int counter = 1;
+        int N = 1;
+        int M = 1;
+        for(int i = 1; i <= height; i++){
             M = i;
-            for(int j = 0; j < width; j++){
+            for(int j = 1; j <= width; j++){
                 N = j;
-                counter++;
                 if(counter == position)
                     return std::make_pair(N, M);
+                counter++;
             }
+
         }
         return std::make_pair(N, M);
     }
@@ -131,6 +133,17 @@ namespace utils {
 
 
         return std::make_shared<model::FTP_Lookup>(model::FTP_Lookup(proc_times, data_size));
+    }
+
+    std::string debugTimePointToString(const std::chrono::system_clock::time_point& tp)
+    {
+        const char* format = "%Y-%m-%d %H:%M:%S.%f";
+        std::time_t t = std::chrono::system_clock::to_time_t(tp);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()) % 1000;
+        std::tm tm = *std::localtime(&t);
+        std::stringstream ss;
+        ss << std::put_time(&tm, format) << "." << std::setfill('0') << std::setw(3) << ms.count();
+        return ss.str();
     }
 } // utils
 

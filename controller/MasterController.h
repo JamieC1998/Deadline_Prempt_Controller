@@ -14,7 +14,7 @@ class MasterController {
 
 public:
     MasterController(std::shared_ptr<services::LogManager> ptr,
-                     std::shared_ptr<services::WorkQueueManager> sharedPtr);
+                     services::WorkQueueManager* sharedPtr);
 
     void handle_get(web::http::http_request message);
 
@@ -22,7 +22,7 @@ public:
 
 private:
     std::shared_ptr<services::RegisterDevices> dev_list = std::make_shared<services::RegisterDevices>();
-    std::shared_ptr<services::WorkQueueManager> workQueueManager;
+    services::WorkQueueManager* workQueueManager;
     std::shared_ptr<services::LogManager> logManager;
 
 };

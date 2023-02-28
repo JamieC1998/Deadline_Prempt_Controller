@@ -90,6 +90,8 @@ namespace model {
 
         web::json::value convertToJson();
 
+        std::shared_ptr<LinkAct> input_data;
+
     private:
         int unique_task_id;
         std::string dnn_id;
@@ -109,7 +111,7 @@ namespace model {
 
         std::string allocated_host;
 
-        std::shared_ptr<LinkAct> input_data;
+
 
         uint64_t task_output_size_bytes = 0;
     };

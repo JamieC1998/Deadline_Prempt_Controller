@@ -45,13 +45,24 @@ namespace model {
         void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
 
         web::json::value convertToJson();
+
+        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &
+        getActualStartFinTime() const;
+
+        void setActualStartFinTime(
+                const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &actualStartFinTime);
+
     private:
-        int link_activity_id = 0;
+        int link_activity_id;
         bool is_meta;
         std::pair<std::string, std::string> host_names;
 
         uint64_t data_size;
         std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
+
+        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> actual_start_fin_time = std::make_pair(std::chrono::time_point<std::chrono::system_clock>(
+                std::chrono::milliseconds{0}), std::chrono::time_point<std::chrono::system_clock>(
+                std::chrono::milliseconds{0}));
     };
 
 } // model

@@ -59,11 +59,13 @@ namespace model {
         start_fin_time = startFinTime;
     }
 
-    LinkAct::LinkAct() {}
+    LinkAct::LinkAct(): link_activity_id(link_activity_counter) {link_activity_counter++;}
 
     LinkAct::LinkAct(
             std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> startFinTime)
-            : start_fin_time(std::move(startFinTime)) {}
+            : start_fin_time(std::move(startFinTime)), link_activity_id(link_activity_counter) {
+        link_activity_counter++;
+    }
 
     web::json::value LinkAct::convertToJson() {
         web::json::value linkActJson;
@@ -75,10 +77,28 @@ namespace model {
         linkActJson["host_names"]["second"] = web::json::value::string(hostNames.second);
         linkActJson["data_size"] = web::json::value::number(LinkAct::getDataSize());
         auto startFinTime = getStartFinTime();
-        linkActJson["start_fin_time"]["first"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                startFinTime.first.time_since_epoch()).count());
-        linkActJson["start_fin_time"]["second"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                startFinTime.second.time_since_epoch()).count());
+        linkActJson["start_fin_time"]["first"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        startFinTime.first.time_since_epoch()).count());
+        linkActJson["start_fin_time"]["second"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        startFinTime.second.time_since_epoch()).count());
+        linkActJson["actual_start_fin_time"]["first"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        actual_start_fin_time.first.time_since_epoch()).count());
+        linkActJson["actual_start_fin_time"]["second"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        actual_start_fin_time.second.time_since_epoch()).count());
         return linkActJson;
+    }
+
+    const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &
+    LinkAct::getActualStartFinTime() const {
+        return actual_start_fin_time;
+    }
+
+    void LinkAct::setActualStartFinTime(
+            const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &actualStartFinTime) {
+        actual_start_fin_time = actualStartFinTime;
     }
 } // model

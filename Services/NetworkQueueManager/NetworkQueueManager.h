@@ -33,6 +33,7 @@ namespace services {
         std::vector<std::shared_ptr<model::BaseNetworkCommsModel>> comms;
     };
 
+    static void pruneDNN(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
     static void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
     static void highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
     static void taskUpdate(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);

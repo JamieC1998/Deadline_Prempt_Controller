@@ -6,7 +6,7 @@
 #define CONTROLLER_CLIENT_DETAILS_H
 
 namespace constant{
-#define HIGH_CLIENT_PORT "3113"
+#define HIGH_CLIENT_PORT "6502"
 #define IPERF_PORT "3114"
 
 /* ENDPOINTS FOR INFERENCE REST */
@@ -14,15 +14,16 @@ namespace constant{
 #define HIGH_TASK_ALLOCATION "allocate_high_task"
 #define HIGH_TASK_REALLOCATION "reallocate_high_task"
 #define TASK_UPDATE "update_task"
+#define PRUNE_ENDPOINT "prune"
 
-#define LOW_COMP_PORT "1337"
+#define LOW_COMP_PORT "9028"
 
 /* ENDPOINTS FOR EXPERIMENT MANAGER */
 #define LOW_TASK_ALLOCATION "allocate_low_task"
 #define SET_EXPERIMENT_START "experiment_start"
 
 
-#define CLIENT_COUNT 4
+#define CLIENT_COUNT 1
 #define PER_DEVICE_CORES 4
 #define MAX_CORES (CLIENT_COUNT * PER_DEVICE_CORES)
 #define MAX_CORE_ALLOWANCE (MAX_CORES / 2)

@@ -25,7 +25,7 @@ namespace services {
                     overlapping_tasks.push_back(temp_task);
             }
 
-            if (overlapping_tasks.size() == device->getCores()) {
+            if (overlapping_tasks.size() < device->getCores() - 1) {
                 selected_device = device->getId();
                 host_name = device->getHostName();
                 break;

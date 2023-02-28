@@ -19,7 +19,7 @@ namespace utils {
     unsigned long calculateStateUpdateSize();
     std::ifstream::pos_type filesize(std::string filename);
     std::shared_ptr<model::FTP_Lookup> parseFTP_Lookup();
-
+    std::string debugTimePointToString(const std::chrono::system_clock::time_point& tp);
     std::pair<int, int> fetchN_M(int position, int width, int height);
 } // utils
 
