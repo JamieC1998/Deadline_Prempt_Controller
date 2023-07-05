@@ -1,0 +1,11 @@
+//
+// Created by Jamie Cotter on 01/05/2023.
+//
+
+#ifndef CONTROLLER_MODEMACROS_H
+#define CONTROLLER_MODEMACROS_H
+
+#define DEADLINE_PREMPT 1
+#define SOFT_DEADLINES 0
+
+#endif //CONTROLLER_MODEMACROS_H

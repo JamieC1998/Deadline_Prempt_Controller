@@ -23,6 +23,7 @@ namespace model {
         void addComms(std::vector<std::shared_ptr<LinkAct>> linkActs);
         void sortLink();
         std::map<std::string, std::shared_ptr<ComputationDevice>> devices;
+        web::json::value convertToJson();
     };
 
 } // model

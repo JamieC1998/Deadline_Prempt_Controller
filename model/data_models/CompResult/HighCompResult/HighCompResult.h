@@ -9,66 +9,51 @@
 #include <string>
 #include <map>
 #include "../../../enums/DNN_Type_Enum.h"
-#include "../../Task/Task.h"
-#include "../../ResultBlock/ResultBlock.h"
 #include "../BaseCompResult/BaseCompResult.h"
+#include "../../LinkAct/LinkAct.h"
 
 namespace model {
 
     class HighCompResult: public BaseCompResult{
     public:
-        HighCompResult(const std::string &dnnId, enums::dnn_type dnnType, std::string srcHost,
-                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
+
+        HighCompResult(const std::string &dnnId, const std::string &allocatedHost, const std::string &srcHost,
+                       int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
-                       std::string startingConvidx, std::shared_ptr<LinkAct> uploadData);
+                       const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+                       const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType, int m, int n,
+                       std::shared_ptr<LinkAct> taskAllocation);
 
-        const std::string &getSrcHost() const;
+        HighCompResult(const std::string &dnnId, const std::string &srcHost,
+                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                       const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
 
-        void setSrcHost(const std::string &srcHost);
-
-        std::chrono::time_point<std::chrono::system_clock> getDeadline() const;
-
-        void setDeadline(std::chrono::time_point<std::chrono::system_clock> deadline);
-
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedStart() const;
-
-        void setEstimatedStart(std::chrono::time_point<std::chrono::system_clock> estimatedStart);
-
-        std::chrono::time_point<std::chrono::system_clock> getEstimatedFinish() const;
-
-        void setEstimatedFinish(std::chrono::time_point<std::chrono::system_clock> estimatedFinish);
-
-        int getLastCompleteConvIdx() const;
-
-        void setLastCompleteConvIdx(int currentConvix);
-
-        const std::string &getStartingConvidx() const;
-
-        void setStartingConvidx(const std::string &startingConvidx);
-
-        const std::shared_ptr<LinkAct> &getUploadData() const;
-
-        void setUploadData(const std::shared_ptr<LinkAct> &uploadData);
 
         void resetUploadData();
 
         web::json::value convertToJson();
 
-        std::map<std::string, std::shared_ptr<ResultBlock>> tasks;
+        int getM() const;
 
-        uint64_t getVersion();
+        void setM(int m);
+
+        int getN() const;
+
+        void setN(int n);
+
+        const std::shared_ptr<LinkAct> &getTaskAllocation() const;
+
+        void setTaskAllocation(const std::shared_ptr<LinkAct> &taskAllocation);
+
+        uint64_t getVersion() const;
 
         void setVersion(uint64_t version);
 
     private:
-        std::string srcHost;
-        std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::chrono::time_point<std::chrono::system_clock> estimatedStart;
-        std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
+        int M = 0;
+        int N = 0;
 
-        std::string starting_convidx;
-        int lastCompleteConvidx = -1;
-        std::shared_ptr<LinkAct> upload_data;
+        std::shared_ptr<LinkAct> task_allocation;
         uint64_t version = std::chrono::system_clock::now().time_since_epoch().count() * 1000;
     };
 

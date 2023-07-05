@@ -14,25 +14,24 @@ namespace model {
     class StateUpdate : public WorkItem {
     public:
         StateUpdate(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
-                    std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> finishTimes,
-                    std::string convidx, std::string dnnId);
+                    std::chrono::time_point<std::chrono::system_clock> finishTime, std::string dnnId);
 
-        const std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> &getFinishTimes() const;
+        const std::chrono::time_point<std::chrono::system_clock> &getFinishTime() const;
 
-        void setFinishTimes(const std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> &finishTimes);
-
-        const std::string &getConvidx() const;
-
-        void setConvidx(const std::string &convidx);
+        void setFinishTime(const std::chrono::time_point<std::chrono::system_clock> &finishTime);
 
         const std::string &getDnnId() const;
 
         void setDnnId(const std::string &dnnId);
 
+        bool isSuccess() const;
+
+        void setSuccess(bool success);
+
     private:
-        std::map<int, std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>> finish_times;
-        std::string convidx;
+        std::chrono::time_point<std::chrono::system_clock> finish_time;
         std::string dnn_id;
+        bool success = true;
     };
 
 } // model

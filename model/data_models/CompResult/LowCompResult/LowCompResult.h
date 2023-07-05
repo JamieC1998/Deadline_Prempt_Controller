@@ -8,7 +8,6 @@
 #include <string>
 #include "../../LinkAct/LinkAct.h"
 #include "../BaseCompResult/BaseCompResult.h"
-#include "../../Task/Task.h"
 
 namespace model {
 
@@ -16,51 +15,20 @@ namespace model {
 
     public:
 
-        LowCompResult(const std::string &dnnId, enums::dnn_type dnnType, const std::string &srcHost,
+        LowCompResult(const std::string &dnnId, const std::string &allocatedHost, const std::string &srcHost,
+                      int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                      const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
+                      const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
+                      const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
+
+        LowCompResult(const std::string &dnnId, const std::string &srcHost, int coreAllocation,
                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                      const std::shared_ptr<LinkAct> &uploadData);
-
-        LowCompResult(const std::string &dnnId, enums::dnn_type dnnType, const std::string &srcHost,
-                      const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                      const std::shared_ptr<LinkAct> &uploadData);
-
-        LowCompResult();
-
-        const std::string &getSrcHost() const;
-
-        void setSrcHost(const std::string &srcHost);
-
-        const std::chrono::time_point<std::chrono::system_clock> &getDeadline() const;
-
-        void setDeadline(const std::chrono::time_point<std::chrono::system_clock> &deadline);
-
-        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedStart() const;
-
-        void setEstimatedStart(const std::chrono::time_point<std::chrono::system_clock> &estimatedStart);
-
-        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedFinish() const;
-
-        void setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish);
-
-        const std::shared_ptr<LinkAct> &getUploadData() const;
-
-        void setUploadData(const std::shared_ptr<LinkAct> &uploadData);
-
-        const std::shared_ptr<model::Task> &getTask() const;
-
-        void setTask(const std::shared_ptr<model::Task> &task);
+                      const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
 
         web::json::value convertToJson();
 
-    private:
-        std::string srcHost;
-        std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::chrono::time_point<std::chrono::system_clock> estimatedStart;
-        std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
-        std::shared_ptr<model::Task> task;
-        std::shared_ptr<LinkAct> upload_data;
     };
 
 } // model

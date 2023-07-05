@@ -31,9 +31,14 @@ namespace model {
 
         std::shared_ptr<std::vector<std::string>> &getHostList();
 
+        bool isReallocation() const;
+
+        void setReallocation(bool reallocation);
+
     private:
         std::shared_ptr<std::vector<std::string>> host_list;
         enums::request_type requestType;
+        bool reallocation = false;
     };
 
 } // model

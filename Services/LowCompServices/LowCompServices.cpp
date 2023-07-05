@@ -26,20 +26,13 @@ namespace services {
         auto pI = std::static_pointer_cast<model::LowProcessingItem>(pItem);
         auto [dnn_id, host] = pI->getDnnIdAndDevice();
 
-        std::chrono::system_clock::duration dr =
-                (start_time->first + std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME}) - start_time->first;
+        std::chrono::time_point<std::chrono::system_clock> dr = (start_time->second + std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME});
 
-        if (services::isValidNode(std::chrono::duration_cast<std::chrono::milliseconds>(dr), start_time,
-                                  sharedPtr[host])) {
-            time_window = std::make_shared<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>(
-                    start_time->first,
-                    std::chrono::time_point_cast<std::chrono::milliseconds>(
-                            start_time->first +
-                            std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME}));
+        time_window = std::make_shared<std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>>>(
+                start_time->second,
+                dr);
 
-            return make_pair(true, time_window);
-        }
-
-        return std::make_pair(false, time_window);
+        return make_pair(services::isValidNode(start_time->second, dr,
+                                  sharedPtr[host]), time_window);
     }
 } // services

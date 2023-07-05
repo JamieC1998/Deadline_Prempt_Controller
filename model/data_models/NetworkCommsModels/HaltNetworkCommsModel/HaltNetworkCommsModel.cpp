@@ -8,9 +8,20 @@
 
 model::HaltNetworkCommsModel::HaltNetworkCommsModel(enums::network_comms_types type,
                                                     const std::chrono::time_point<std::chrono::system_clock> &commTime,
-                                                    std::map<std::string, uint64_t> versionMap)
-        : BaseNetworkCommsModel(type, commTime), version_map(std::move(versionMap)) {}
+                                                    const std::string &hostToContact, const std::string &dnnId,
+                                                    uint64_t versionNumber) : BaseNetworkCommsModel(type, commTime),
+                                                                              hostToContact(hostToContact),
+                                                                              dnnId(dnnId),
+                                                                              versionNumber(versionNumber) {}
 
-const std::map<std::string, uint64_t> &model::HaltNetworkCommsModel::getVersionMap() const {
-    return version_map;
+const std::string &model::HaltNetworkCommsModel::getHostToContact() const {
+    return hostToContact;
+}
+
+const std::string &model::HaltNetworkCommsModel::getDnnId() const {
+    return dnnId;
+}
+
+uint64_t model::HaltNetworkCommsModel::getVersionNumber() const {
+    return versionNumber;
 }

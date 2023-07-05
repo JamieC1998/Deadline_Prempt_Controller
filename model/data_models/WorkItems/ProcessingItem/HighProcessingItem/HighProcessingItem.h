@@ -12,32 +12,32 @@
 
 namespace model {
     //Low Comp, High Comp and DL_Prempt
-    class HighProcessingItem: public WorkItem {
+    class HighProcessingItem : public WorkItem {
     public:
         HighProcessingItem(enums::request_type requestType, std::shared_ptr<std::vector<std::string>> &hostList);
 
         HighProcessingItem(std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
                            std::chrono::time_point<std::chrono::system_clock> deadline, std::string dnnId);
 
+        HighProcessingItem(std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
+                           std::chrono::time_point<std::chrono::system_clock> deadline, std::string dnnId,
+                           std::vector<std::string> dnnIds);
+
         std::chrono::time_point<std::chrono::system_clock> &getDeadline();
-
-        bool isReallocation() const;
-
-        void setReallocation(bool reallocation);
-
-        const std::shared_ptr<model::HighCompResult> &getBaseResult() const;
-
-        void setBaseResult(const std::shared_ptr<model::HighCompResult> &baseResult);
 
         const std::string &getDnnId() const;
 
         void setDnnId(const std::string &dnnId);
 
+        std::map<std::string, std::shared_ptr<model::HighCompResult>> baseResult;
+
+        const std::vector<std::string> &getDnnIds() const;
+
     private:
         std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::string dnn_id;
-        bool reallocation = false;
-        std::shared_ptr<model::HighCompResult> baseResult;
+        std::string base_dnn_id;
+
+        std::vector<std::string> dnn_ids;
     };
 
 } // model

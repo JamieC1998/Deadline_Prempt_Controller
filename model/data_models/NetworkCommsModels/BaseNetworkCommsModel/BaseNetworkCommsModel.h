@@ -10,7 +10,6 @@
 #include <string>
 #include <chrono>
 #include "../../../enums/NetworkCommsTypes.h"
-#include "../../Task/Task.h"
 
 namespace model {
     class BaseNetworkCommsModel {

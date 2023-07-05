@@ -10,17 +10,17 @@
 #include "chrono"
 #include "../../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
 #include "../../model/data_models/LinkAct/LinkAct.h"
-#include "../../model/data_models/FTP_Lookup/FTP_Lookup.h"
+#include "../../model/data_models/ComputationDevice/ComputationDevice.h"
 
 namespace utils {
 
     std::string convertDateToString(std::chrono::time_point<std::chrono::high_resolution_clock> timePoint);
-    uint64_t calculateSizeOfInputData(std::shared_ptr<model::FTP_Lookup> lookup_table);
     unsigned long calculateStateUpdateSize();
     std::ifstream::pos_type filesize(std::string filename);
-    std::shared_ptr<model::FTP_Lookup> parseFTP_Lookup();
     std::string debugTimePointToString(const std::chrono::system_clock::time_point& tp);
     std::pair<int, int> fetchN_M(int position, int width, int height);
+    bool is_allocated(std::string task_id, std::vector<std::string> completed_tasks);
+    std::map<std::string, int> generateAllocationMap(std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices);
 } // utils
 
 #endif //CONTROLLER_UTILFUNCTIONS_H

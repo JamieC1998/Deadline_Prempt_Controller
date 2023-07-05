@@ -18,7 +18,7 @@ namespace model {
                     link_activity_counter) { link_activity_counter++; }
 
     int LinkAct::getLinkActivityId() {
-        return link_activity_id;
+        return LinkAct::link_activity_id;
     }
 
     void LinkAct::setLinkActivityId(int linkActivityId) {

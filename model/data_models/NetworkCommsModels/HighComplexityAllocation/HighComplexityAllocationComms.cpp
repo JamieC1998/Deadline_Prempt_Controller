@@ -10,11 +10,11 @@ namespace model {
     HighComplexityAllocationComms::HighComplexityAllocationComms(enums::network_comms_types type,
                                                                  const std::chrono::time_point<std::chrono::system_clock> &commTime,
                                                                  std::shared_ptr<HighCompResult> allocatedTask,
-                                                                 std::string host, std::mutex* mutx) : BaseNetworkCommsModel(type,
+                                                                 std::string host) : BaseNetworkCommsModel(type,
                                                                                                                   commTime),
                                                                                             allocatedTask(std::move(
                                                                                                     allocatedTask)),
-                                                                                            host(std::move(host)), mut(mutx) {}
+                                                                                            host(std::move(host)) {}
 
     const std::shared_ptr<HighCompResult> &HighComplexityAllocationComms::getAllocatedTask() const {
         return allocatedTask;
@@ -32,7 +32,4 @@ namespace model {
         HighComplexityAllocationComms::host = host;
     }
 
-    std::mutex *HighComplexityAllocationComms::getMut() const {
-        return mut;
-    }
 } // model

@@ -16,18 +16,22 @@ namespace model {
 
         int getProcTimeMilliseconds() const;
 
+        void setProcTimeMilliseconds(int procTimeMilliseconds);
+
         int getN() const;
 
         int getM() const;
 
-        const std::vector<uint64_t> &getTileSize() const;
+        int getBlockCount() const;
+
+        void setBlockCount(int blockCount);
 
     private:
         int proc_time_milliseconds;
         int N = 0;
         int M = 0;
-        std::vector<uint64_t> tile_size;
 
+        int block_count = 0;
     };
 }
 

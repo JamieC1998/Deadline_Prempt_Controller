@@ -14,13 +14,18 @@ namespace model{
     public:
         HaltNetworkCommsModel(enums::network_comms_types type,
                               const std::chrono::time_point<std::chrono::system_clock> &commTime,
-                              std::map<std::string, uint64_t> versionMap);
+                              const std::string &hostToContact, const std::string &dnnId, uint64_t versionNumber);
 
-        const std::map<std::string, uint64_t> &getVersionMap() const;
+        const std::string &getHostToContact() const;
+
+        const std::string &getDnnId() const;
+
+        uint64_t getVersionNumber() const;
 
     private:
-        /* Key is dnn_id, value is version */
-        std::map<std::string, uint64_t> version_map;
+        std::string hostToContact;
+        std::string dnnId;
+        uint64_t versionNumber;
     };
 };
 

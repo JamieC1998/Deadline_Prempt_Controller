@@ -12,19 +12,14 @@ namespace model {
 
     class PruneItem: public WorkItem{
     public:
-        PruneItem(enums::request_type requestType, std::string dnnId, std::string nextConvBlock);
+        PruneItem(enums::request_type requestType, std::string dnnId);
 
         const std::string &getDnnId() const;
 
         void setDnnId(const std::string &dnnId);
 
-        const std::string &getNextConvBlock() const;
-
-        void setNextConvBlock(const std::string &nextConvBlock);
-
     private:
         std::string dnn_id;
-        std::string next_conv_block;
     };
 
 } // model

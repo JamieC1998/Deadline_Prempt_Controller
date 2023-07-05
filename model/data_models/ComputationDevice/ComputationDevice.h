@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "../Task/Task.h"
+#include "../CompResult/BaseCompResult/BaseCompResult.h"
 
 namespace model {
 
@@ -16,7 +16,7 @@ namespace model {
         static int id_counter;
 
     public:
-        ComputationDevice(int cores, const std::string &hostName);
+        ComputationDevice(int cores, std::string hostName);
 
         int getCores() const;
 
@@ -26,13 +26,15 @@ namespace model {
 
         void setHostName(const std::string &hostName);
 
-        const std::vector<std::shared_ptr<Task>> &getTasks() const;
+        const std::vector<std::shared_ptr<BaseCompResult>> &getDNNs() const;
 
-        void setTasks(const std::vector<std::shared_ptr<Task>> &tasks);
+        void setTasks(const std::vector<std::shared_ptr<BaseCompResult>> &tasks);
 
         int getId() const;
 
-        std::vector<std::shared_ptr<Task>> TASKS;
+        std::vector<std::shared_ptr<BaseCompResult>> DNNS;
+
+        web::json::value convertToJson();
 
     private:
         int id;

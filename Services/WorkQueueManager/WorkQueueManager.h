@@ -13,7 +13,6 @@
 #include "../../model/data_models/CompResult/HighCompResult/HighCompResult.h"
 #include "../../model/data_models/WorkItems/BaseWorkItem/WorkItem.h"
 #include "../NetworkQueueManager/NetworkQueueManager.h"
-#include "../../model/data_models/FTP_Lookup/FTP_Lookup.h"
 #include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
 #include "../LOG_MANAGER/LogManager.h"
 
@@ -45,7 +44,6 @@ namespace services {
 
         void setJitter(double jitter);
 
-        std::shared_ptr<model::FTP_Lookup> lookup_table;
         uint64_t state_size = 0;
 
         std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
@@ -67,11 +65,7 @@ namespace services {
 
     static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void prune_dnn_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    static void dag_disruption_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    static void halt_call(WorkQueueManager* queueManager);
+    static void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
 } // services
 

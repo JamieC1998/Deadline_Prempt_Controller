@@ -61,12 +61,14 @@ namespace services {
                 return "STATE_UPDATE_REQUEST";
             case enums::LogTypeEnum::HIGH_COMP_FINISH:
                 return "HIGH_COMP_FINISH";
-            case enums::LogTypeEnum::DNN_PRUNE:
-                return "DNN_PRUNE";
+            case enums::LogTypeEnum::LOW_COMP_FINISH:
+                return "LOW_COMP_FINISH";
             case enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL:
                 return "LOW_COMP_ALLOCATION_FAIL";
             case enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS:
                 return "LOW_COMP_ALLOCATION_SUCCESS";
+            case enums::LogTypeEnum::LOW_COMP_PREMPT_ALLOCATION_SUCCESS:
+                return "LOW_COMP_PREMPT_ALLOCATION_SUCCESS";
             case enums::LogTypeEnum::HALT_REQUEST:
                 return "HALT_REQUEST";
             case enums::LogTypeEnum::HIGH_COMP_ALLOCATION_CORE_FAIL:
@@ -101,8 +103,10 @@ namespace services {
                 return "ADD_NETWORK_TASK";
             case enums::LogTypeEnum::HIGH_COMP_REALLOCATION_SUCCESS:
                 return "HIGH_COMP_REALLOCATION_SUCCESS";
-            case enums::LogTypeEnum::OUTBOUND_PRUNE:
-                return "OUTBOUND_PRUNE";
+            case enums::LogTypeEnum::VIOLATED_DEADLINE:
+                return "VIOLATED_DEADLINE";
+            case enums::LogTypeEnum::VIOLATED_DEADLINE_REQUEST:
+                return "VIOLATED_DEADLINE_REQUEST";
         }
         return "NaN";
     }

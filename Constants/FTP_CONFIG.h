@@ -6,8 +6,14 @@
 #define CONTROLLER_FTP_CONFIG_H
 
 namespace constant {
-#define FTP_PROCESSING_TIME "/Users/jamiecotter/Documents/Work/PhD/JsonParseTest/dumped_ftp_proc_times.json"
-#define FTP_DATA_SIZE "/Users/jamiecotter/Documents/Work/PhD/JsonParseTest/dumped_ftp_partition_configs_tile_size.json"
+#define FTP_LOW_TIME 16861.2029
+#define FTP_HIGH_TIME 11610.2628
+#define FTP_LOW_N 1
+#define FTP_LOW_M 2
+#define FTP_LOW_CORE (FTP_LOW_M * FTP_LOW_N)
+#define FTP_HIGH_N 2
+#define FTP_HIGH_M 2
+#define FTP_HIGH_CORE (FTP_HIGH_N * FTP_HIGH_M)
 }
 
 #endif //CONTROLLER_FTP_CONFIG_H

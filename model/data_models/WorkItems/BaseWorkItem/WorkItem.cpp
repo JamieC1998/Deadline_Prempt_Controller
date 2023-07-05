@@ -31,5 +31,13 @@ namespace model {
     WorkItem::WorkItem(std::shared_ptr<std::vector<std::string>> hostList, enums::request_type requestType)
             : host_list(std::move(hostList)), requestType(requestType) { internal_item_id_counter++; }
 
+    bool WorkItem::isReallocation() const {
+        return reallocation;
+    }
+
+    void WorkItem::setReallocation(bool reallocation) {
+        WorkItem::reallocation = reallocation;
+    }
+
 
 } // model

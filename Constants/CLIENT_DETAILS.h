@@ -12,9 +12,7 @@ namespace constant{
 /* ENDPOINTS FOR INFERENCE REST */
 #define HALT_ENDPOINT "halt"
 #define HIGH_TASK_ALLOCATION "allocate_high_task"
-#define HIGH_TASK_REALLOCATION "reallocate_high_task"
 #define TASK_UPDATE "update_task"
-#define PRUNE_ENDPOINT "prune"
 
 #define LOW_COMP_PORT "9028"
 
@@ -23,10 +21,10 @@ namespace constant{
 #define SET_EXPERIMENT_START "experiment_start"
 
 
-#define CLIENT_COUNT 1
+#define CLIENT_COUNT 2
 #define PER_DEVICE_CORES 4
 #define MAX_CORES (CLIENT_COUNT * PER_DEVICE_CORES)
-#define MAX_CORE_ALLOWANCE (MAX_CORES / 2)
+#define MAX_CORE_ALLOWANCE PER_DEVICE_CORES
 
 #define CONTROLLER_HOSTNAME "COM-C132-M34579"
 #define CONTROLLER_REST_PORT 6502
