@@ -6,8 +6,8 @@
 #define CONTROLLER_FTP_CONFIG_H
 
 namespace constant {
-#define FTP_LOW_TIME 16861.2029
-#define FTP_HIGH_TIME 11610.2628
+#define FTP_LOW_TIME 16862
+#define FTP_HIGH_TIME 11611
 #define FTP_LOW_N 1
 #define FTP_LOW_M 2
 #define FTP_LOW_CORE (FTP_LOW_M * FTP_LOW_N)

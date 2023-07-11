@@ -21,7 +21,7 @@ namespace constant{
 #define SET_EXPERIMENT_START "experiment_start"
 
 
-#define CLIENT_COUNT 2
+#define CLIENT_COUNT 4
 #define PER_DEVICE_CORES 4
 #define MAX_CORES (CLIENT_COUNT * PER_DEVICE_CORES)
 #define MAX_CORE_ALLOWANCE PER_DEVICE_CORES

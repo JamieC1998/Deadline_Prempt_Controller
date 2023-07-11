@@ -161,7 +161,7 @@ namespace services {
             queueManager->logManager->add_log(enums::LogTypeEnum::HALT_REQUEST, halt_log);
 #endif
             web::json::value log;
-            log["dnn_id"] = web::json::value::string(newTask->getDnnIdAndDevice().first);
+            log["dnn_id"] = web::json::value::string(proc_item->getDnnIdAndDevice().first);
             log["current_time"] = web::json::value::number(
                     std::chrono::system_clock::now().time_since_epoch().count() * 1000);
             log["source_device"] = web::json::value::string(host);
