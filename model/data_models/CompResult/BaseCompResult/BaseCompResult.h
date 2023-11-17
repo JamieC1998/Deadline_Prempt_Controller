@@ -35,6 +35,10 @@ namespace model {
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType);
 
+        BaseCompResult(std::string dnnId, std::string srcHost,
+                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                       enums::dnn_type dnnType);
+
         int getUniqueDnnId() const;
 
         const std::string &getDnnId() const;

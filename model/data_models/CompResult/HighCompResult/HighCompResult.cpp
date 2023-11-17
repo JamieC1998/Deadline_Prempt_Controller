@@ -61,19 +61,20 @@ namespace model {
         result["dnn_id"] = web::json::value::string(HighCompResult::getDnnId());
         result["allocated_host"] = web::json::value::string(HighCompResult::getAllocatedHost());
         result["source_host"] = web::json::value::string(HighCompResult::getSrcHost());
-        result["core_allocation"] = web::json::value::number(HighCompResult::getCoreAllocation());
+        result["core_allocation"] = web::json::value::number(HighCompResult::getM() * HighCompResult::getN());
         result["deadline"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getDeadline().time_since_epoch()).count());
         result["estimated_start"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getEstimatedStart().time_since_epoch()).count());
         result["estimated_finish"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getEstimatedFinish().time_since_epoch()).count());
-        result["actual_finish"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(HighCompResult::getActualFinish().time_since_epoch()).count());
-        result["upload_data"] = HighCompResult::getUploadData()->convertToJson();
-        if(HighCompResult::getSrcHost() != HighCompResult::getAllocatedHost())
-            result["task_transfer_data"] = HighCompResult::getTaskAllocation()->convertToJson();
-
         result["version"] = web::json::value::number(HighCompResult::getVersion());
         result["N"] = web::json::value::number(HighCompResult::getN());
         result["M"] = web::json::value::number(HighCompResult::getM());
         result["dnn_type"] = web::json::value::string("high_comp");
         return result;
+    }
+
+    HighCompResult::HighCompResult(const std::string &dnnId, const std::string &srcHost,
+                                   const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                                   enums::dnn_type dnnType, int n, int m): BaseCompResult(dnnId, srcHost, deadline, dnnType), M(m), N(n) {
+
     }
 } // model

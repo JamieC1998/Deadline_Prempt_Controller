@@ -15,7 +15,9 @@ namespace model {
     public:
         HighComplexityAllocationComms(enums::network_comms_types type,
                                       const std::chrono::time_point<std::chrono::system_clock> &commTime,
-                                      std::shared_ptr<HighCompResult> allocatedTask, std::string host);
+                                      std::shared_ptr<HighCompResult> allocatedTask, std::string host, bool isSuccess);
+
+        HighComplexityAllocationComms(enums::network_comms_types type, const std::chrono::time_point<std::chrono::system_clock> &commTime, bool isSuccess, std::string host);
 
         const std::shared_ptr<HighCompResult> &getAllocatedTask() const;
 
@@ -25,10 +27,13 @@ namespace model {
 
         void setHost(const std::string &host);
 
+        bool isSuccess() const;
+
     private:
         //Allocation is true
         std::shared_ptr<HighCompResult> allocatedTask;
         std::string host;
+        bool success;
     };
 
 } // model

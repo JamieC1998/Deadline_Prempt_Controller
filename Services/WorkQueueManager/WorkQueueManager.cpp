@@ -22,6 +22,8 @@
 #include "../../model/data_models/WorkItems/HaltWorkItem/HaltWorkItem.h"
 #include "../../Constants/RequestSizes.h"
 #include "../../Constants/FTP_CONFIG.h"
+#include "../../model/data_models/WorkItems/WorkRequest/WorkRequest.h"
+#include "../../model/data_models/NetworkCommsModels/WorkRequestResponse/WorkRequestResponse.h"
 
 namespace services {
     std::atomic<int> WorkQueueManager::thread_counter = 0;
@@ -42,24 +44,30 @@ namespace services {
         std::string allocated_device = dnn->getAllocatedHost();
 
         auto dnn_id = dnn->getDnnId();
-        queueManager->network->devices[allocated_device]->DNNS.erase(std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(), queueManager->network->devices[allocated_device]->DNNS.end(), [dnn_id](std::shared_ptr<model::BaseCompResult> br){
-            return dnn_id == br->getDnnId();
-        }), queueManager->network->devices[allocated_device]->DNNS.end());
+        queueManager->network->devices[allocated_device]->DNNS.erase(
+                std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(),
+                               queueManager->network->devices[allocated_device]->DNNS.end(),
+                               [dnn_id](std::shared_ptr<model::BaseCompResult> br) {
+                                   return dnn_id == br->getDnnId();
+                               }), queueManager->network->devices[allocated_device]->DNNS.end());
 
 
         /* Begin iterating through the DNN to gather tasks and links to remove */
         std::vector<std::shared_ptr<model::LinkAct>> links_to_prune;
 
-        links_to_prune.push_back(dnn->getUploadData());
-        links_to_prune.push_back(dnn->getStateUpdate());
-        if (dnn->getDnnType() != enums::dnn_type::low_comp && dnn->getSrcHost() != dnn->getAllocatedHost())
-            links_to_prune.push_back(std::static_pointer_cast<model::HighCompResult>(dnn)->getTaskAllocation());
+        if(dnn->getDnnType() == enums::dnn_type::low_comp) {
+            links_to_prune.push_back(dnn->getUploadData());
+            links_to_prune.push_back(dnn->getStateUpdate());
+        }
 
         for (const auto &prune_link: links_to_prune) {
             auto link_id = prune_link->getLinkActivityId();
-            queueManager->network->network_link.erase(std::remove_if(queueManager->network->network_link.begin(), queueManager->network->network_link.end(), [link_id](std::shared_ptr<model::LinkAct> linkAct){
-                return linkAct->getLinkActivityId() == link_id;
-            }), queueManager->network->network_link.end());
+            queueManager->network->network_link.erase(std::remove_if(queueManager->network->network_link.begin(),
+                                                                     queueManager->network->network_link.end(),
+                                                                     [link_id](
+                                                                             std::shared_ptr<model::LinkAct> linkAct) {
+                                                                         return linkAct->getLinkActivityId() == link_id;
+                                                                     }), queueManager->network->network_link.end());
         }
 
         queueManager->off_total.erase(dnn->getDnnId());
@@ -71,7 +79,7 @@ namespace services {
 
 
         net_lock.unlock();
-        if(stateUpdate->isSuccess())
+        if (stateUpdate->isSuccess())
             dnn->setActualFinish(stateUpdate->getFinishTime());
         web::json::value log;
 
@@ -80,7 +88,8 @@ namespace services {
             queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_FINISH, log);
         } else {
             log["dnn_details"] = std::static_pointer_cast<model::HighCompResult>(dnn)->convertToJson();
-            queueManager->logManager->add_log(stateUpdate->isSuccess() ? enums::LogTypeEnum::HIGH_COMP_FINISH : enums::LogTypeEnum::VIOLATED_DEADLINE, log);
+            queueManager->logManager->add_log(stateUpdate->isSuccess() ? enums::LogTypeEnum::HIGH_COMP_FINISH
+                                                                       : enums::LogTypeEnum::VIOLATED_DEADLINE, log);
         }
 
 
@@ -225,255 +234,175 @@ namespace services {
         queueManager->decrementThreadCounter();
     }
 
-
-    void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
-        auto processingItem = std::static_pointer_cast<model::HighProcessingItem>(item);
-        bool isReallocation = processingItem->isReallocation();
-
-        std::string sourceHost = (*item->getHostList())[0];
-
-        std::map<std::string, std::shared_ptr<model::HighCompResult>> baseResult;
-
-        auto bytes_per_ms = queueManager->getBytesPerMillisecond();
-
-        std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
-        std::unique_lock<std::mutex> netlock(queueManager->network_lock, std::defer_lock);
-        netlock.lock();
-
-
-        if (isReallocation) {
-            baseResult = processingItem->baseResult;
-            for (const auto &[dnn_id, baseRes]: baseResult) {
-                baseRes->setVersion(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
-            }
-        }
-
+    void add_high_comp_work_item(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
         std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
         offload_lock.lock();
 
-        std::vector<std::chrono::time_point<std::chrono::system_clock>> finish_times;
+        auto currentTime = std::chrono::system_clock::now();
+        auto highProcessingItem = std::static_pointer_cast<model::HighProcessingItem>(item);
+        auto work_stealing_queue = queueManager->getWorkStealingQueue();
+        work_stealing_queue.push_back(highProcessingItem);
+        std::sort(work_stealing_queue.begin(), work_stealing_queue.end(),
+                  [](std::shared_ptr<model::HighProcessingItem> a, std::shared_ptr<model::HighProcessingItem> b) {
+                      return a->getDeadline() < b->getDeadline();
+                  });
 
-        for (const auto &[dnn_id, dnn_task]: queueManager->off_total) {
-            auto finish = dnn_task->getEstimatedFinish();
+        uint64_t comm_bytes = HIGH_TASK_SIZE;
+        auto bytes_per_ms = queueManager->getBytesPerMillisecond();
+        auto comm_time = static_cast<uint64_t>(comm_bytes / bytes_per_ms);
+        auto ftp_high_processing_window = currentTime + std::chrono::milliseconds(comm_time + FTP_HIGH_TIME);
 
-#if SOFT_DEADLINES == 0
-            if (finish < processingItem->getDeadline() && finish > currentTime)
-#else
-                if (finish > std::chrono::system_clock::now())
-#endif
-                finish_times.push_back(finish);
+        std::vector<std::shared_ptr<model::HighProcessingItem>> newList;
+
+        for(const auto& task: work_stealing_queue){
+            if (ftp_high_processing_window < task->getDeadline())
+                newList.push_back(task);
         }
 
-        auto now = currentTime;
-        finish_times.push_back(now);
-        std::sort(finish_times.begin(), finish_times.end());
+        queueManager->setWorkStealingQueue(newList);
+        offload_lock.unlock();
 
-        std::vector<std::string> allocated_tasks;
+        queueManager->decrementThreadCounter();
+    }
 
-        for (const auto &finish_time: finish_times) {
-            auto allocationMap = utils::generateAllocationMap(queueManager->network->devices);
+    void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+        auto workRequest = std::static_pointer_cast<model::WorkRequest>(item);
 
-            std::vector<std::shared_ptr<model::HighCompResult>> results;
+        int device_capacity = MAX_CORE_ALLOWANCE - workRequest->getCapacity();
 
-            for (const auto &dnn_id: processingItem->getDnnIds()) {
-                if (utils::is_allocated(dnn_id, allocated_tasks))
-                    continue;
+        auto currentTime = std::chrono::system_clock::now();
+        std::string sourceHost = (*item->getHostList())[0];
 
-                //NEED TO FIND EARLIEST LINK SLOT TO COMMUNICATE DATA TO SOURCE DEVICE
-                auto initial_data_communication_slot = services::findLinkSlot(finish_time, bytes_per_ms,
-                                                                              HIGH_TASK_SIZE,
-                                                                              queueManager->network->network_link);
+        if (device_capacity < FTP_LOW_CORE) {
+            std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
+                    enums::network_comms_types::high_complexity_task_mapping,
+                    currentTime,
+                    false, sourceHost);
 
-                /* We need to create a link activity for the initial upload of data */
-                std::shared_ptr<model::LinkAct> initial_task_allocation = std::make_shared<model::LinkAct>();
-                initial_task_allocation->setIsMeta(false);
-                initial_task_allocation->setDataSize(HIGH_TASK_SIZE);
-                initial_task_allocation->setStartFinTime(
-                        std::make_pair(initial_data_communication_slot->first,
-                                       initial_data_communication_slot->second));
-                initial_task_allocation->setHostNames(std::make_pair(CONTROLLER_HOSTNAME, sourceHost));
+            std::shared_ptr<model::BaseNetworkCommsModel> work_request_response = std::static_pointer_cast<model::BaseNetworkCommsModel>(
+                    high_comp_comms);
 
-                //This window is only used if the task is allocated to a device other than its source
-                auto data_transfer_time_base = initial_data_communication_slot->second + std::chrono::milliseconds{1};
-                auto data_transfer_window = services::findLinkSlot(data_transfer_time_base, bytes_per_ms,
-                                                                   TASK_FORWARD_SIZE,
-                                                                   queueManager->network->network_link);
+            queueManager->networkQueueManager->addTask(work_request_response);
+            web::json::value log;
+            log["host_request"] = web::json::value(sourceHost);
+            log["host_capacity"] = web::json::value::number(device_capacity);
+            queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
 
-                std::shared_ptr<model::LinkAct> data_transfer_link_act = std::make_shared<model::LinkAct>();
-                data_transfer_link_act->setIsMeta(false);
-                data_transfer_link_act->setDataSize(TASK_FORWARD_SIZE);
-                data_transfer_link_act->setStartFinTime(
-                        std::make_pair(data_transfer_window->first, data_transfer_window->second));
+            queueManager->decrementThreadCounter();
+            return;
+        }
 
-                auto src_start_time = initial_task_allocation->getStartFinTime().second + std::chrono::milliseconds{1};
-                auto remote_start_time =
-                        data_transfer_link_act->getStartFinTime().second + std::chrono::milliseconds{1};
+        auto bytes_per_ms = queueManager->getBytesPerMillisecond();
 
-                int current_core = FTP_LOW_CORE;
+        std::unique_lock<std::mutex> netlock(queueManager->network_lock, std::defer_lock);
+        std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
+        offload_lock.lock();
+        netlock.lock();
 
-                int CURRENT_N = FTP_LOW_N;
-                int CURRENT_M = FTP_LOW_M;
+        std::shared_ptr<model::HighCompResult> result;
 
-                std::chrono::time_point<std::chrono::system_clock> finish_time_on_src =
-                        src_start_time +
-                        std::chrono::milliseconds{
-                                FTP_LOW_TIME};
+        auto work_queue = queueManager->getWorkStealingQueue();
 
-                std::chrono::time_point<std::chrono::system_clock> finish_time_on_remote =
-                        remote_start_time +
-                        std::chrono::milliseconds{
-                                FTP_LOW_TIME};
+        int index = 0;
 
-                auto selected_device = services::findNode(queueManager->network->devices,
-                                                          initial_task_allocation->getStartFinTime().second,
-                                                          finish_time_on_src,
-                                                          data_transfer_link_act->getStartFinTime().second,
-                                                          finish_time_on_remote, sourceHost, current_core,
-                                                          allocationMap, dnn_id);
-
-                if (selected_device.first != TASK_NOT_FOUND) {
-                    std::shared_ptr<model::HighCompResult> task = std::make_shared<model::HighCompResult>(dnn_id,
-                                                                                                          sourceHost,
-                                                                                                          processingItem->getDeadline(),
-                                                                                                          initial_task_allocation,
-                                                                                                          enums::dnn_type::high_comp);
-                    if (selected_device.second != sourceHost) {
-
-                        task->setTaskAllocation(data_transfer_link_act);
-                        task->setEstimatedStart(remote_start_time);
-                        task->setEstimatedFinish(finish_time_on_remote);
-
-                        queueManager->network->addComm(data_transfer_link_act);
-                    } else {
-                        task->setEstimatedStart(src_start_time);
-                        task->setEstimatedFinish(finish_time_on_src);
-                    }
-
-                    queueManager->network->addComm(initial_task_allocation);
-                    task->setAllocatedHost(selected_device.second);
-                    task->setCoreAllocation(current_core);
-                    task->setN(CURRENT_N);
-                    task->setM(CURRENT_M);
-
-                    queueManager->network->devices[selected_device.second]->DNNS.push_back(task);
-                    results.push_back(task);
-                    allocationMap[selected_device.second] += 1;
-                }
-            }
-
-            for (const auto &task: results) {
-
-                std::chrono::time_point<std::chrono::system_clock> finish_time_on_device =
-                        task->getEstimatedStart() +
-                        std::chrono::milliseconds{
-                                FTP_HIGH_TIME};
-                auto core_usage = calculateDeviceCoreUsage(task->getEstimatedStart(), finish_time_on_device,
-                                                           queueManager->network->devices[task->getAllocatedHost()],
-                                                           task->getDnnId());
+        int CURRENT_N = -1;
+        int CURRENT_M = -1;
 
 
-                if (core_usage + FTP_HIGH_CORE <=
-                    queueManager->network->devices[task->getAllocatedHost()]->getCores()) {
-                    task->setN(FTP_HIGH_N);
-                    task->setM(FTP_HIGH_M);
-                    task->setCoreAllocation(FTP_HIGH_CORE);
-                    task->setEstimatedFinish(finish_time_on_device);
-                }
+        std::shared_ptr<model::HighProcessingItem> selectedTask;
+        std::chrono::time_point<std::chrono::system_clock> finish_time;
+        std::chrono::time_point<std::chrono::system_clock> start_time;
+        for (index = 0; index < work_queue.size(); index++) {
 
-                /* If the current allocation does not satisfy deadline,
-                 * remove link tasks from link and task from allocated host
-                 * so that we can continue to attempt to allocate */
-                if (task->getEstimatedFinish() > processingItem->getDeadline()) {
-                    if (task->getAllocatedHost() != task->getSrcHost()) {
-                        int comm_id = task->getTaskAllocation()->getLinkActivityId();
+            uint64_t comm_bytes = HIGH_TASK_SIZE;
+            if ((*work_queue[index]->getHostList())[0] != sourceHost)
+                comm_bytes += TASK_FORWARD_SIZE;
 
-                        queueManager->network->network_link.erase(
-                                std::remove_if(queueManager->network->network_link.begin(),
-                                               queueManager->network->network_link.end(), [comm_id](std::shared_ptr<model::LinkAct>la){
-                                    return comm_id == la->getLinkActivityId();
-                                }), queueManager->network->network_link.end());
+            auto comm_time = static_cast<uint64_t>(comm_bytes / bytes_per_ms);
+            auto ftp_low_processing_window = currentTime + std::chrono::milliseconds(comm_time + FTP_LOW_TIME);
+            auto ftp_high_processing_window = currentTime + std::chrono::milliseconds(comm_time + FTP_HIGH_TIME);
 
-                    }
-
-                    int comm_id = task->getUploadData()->getLinkActivityId();
-                    queueManager->network->network_link.erase(
-                            std::remove_if(queueManager->network->network_link.begin(),
-                                           queueManager->network->network_link.end(), [comm_id](std::shared_ptr<model::LinkAct>la){
-                                        return comm_id == la->getLinkActivityId();
-                                    }), queueManager->network->network_link.end());
-
-                    auto dnn_id = task->getDnnId();
-                    auto allocated_device = task->getAllocatedHost();
-                    queueManager->network->devices[allocated_device]->DNNS.erase(std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(), queueManager->network->devices[allocated_device]->DNNS.end(), [dnn_id](std::shared_ptr<model::BaseCompResult> br){
-                        return dnn_id == br->getDnnId();
-                    }), queueManager->network->devices[allocated_device]->DNNS.end());
-
-                } else {
-                    auto state_update_base = task->getEstimatedFinish() + std::chrono::milliseconds{1};
-                    auto state_update_window = services::findLinkSlot(state_update_base, float(bytes_per_ms),
-                                                                      STATE_UPDATE_SIZE,
-                                                                      queueManager->network->network_link);
-
-                    std::shared_ptr<model::LinkAct> state_update_link_act = std::make_shared<model::LinkAct>();
-                    state_update_link_act->setIsMeta(false);
-                    state_update_link_act->setDataSize(STATE_UPDATE_SIZE);
-                    state_update_link_act->setStartFinTime(
-                            std::make_pair(state_update_window->first, state_update_window->second));
-
-                    task->setStateUpdate(state_update_link_act);
-                    queueManager->network->addComm(state_update_link_act);
-
-                    queueManager->off_high[task->getDnnId()] = task;
-                    queueManager->off_total[task->getDnnId()] = std::static_pointer_cast<model::BaseCompResult>(task);
-
-                    std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
-                            enums::network_comms_types::high_complexity_task_mapping,
-                            task->getUploadData()->getStartFinTime().first,
-                            task,
-                            task->getSrcHost());
-
-                    std::shared_ptr<model::BaseNetworkCommsModel> comm_task = std::static_pointer_cast<model::BaseNetworkCommsModel>(
-                            high_comp_comms);
-
-                    web::json::value log;
-                    log["dnn"] =
-                            web::json::value(task->convertToJson());
-                    queueManager->logManager->
-                            add_log((isReallocation)
-                                    ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_SUCCESS
-                                    : enums::LogTypeEnum::HIGH_COMP_ALLOCATION_SUCCESS, log);
-
-                    queueManager->networkQueueManager->
-                            addTask(comm_task);
-
-                    allocated_tasks.push_back(task->getDnnId());
-                }
-            }
-
-            if (allocated_tasks.size() == processingItem->getDnnIds().size())
+            if (ftp_low_processing_window < work_queue[index]->getDeadline()) {
+                CURRENT_N = FTP_LOW_N;
+                CURRENT_M = FTP_LOW_M;
+                selectedTask = work_queue[index];
+                start_time = currentTime + std::chrono::milliseconds{comm_time};
+                finish_time = ftp_low_processing_window;
                 break;
+            } else if (device_capacity == FTP_HIGH_CORE &&
+                       ftp_high_processing_window < work_queue[index]->getDeadline()) {
+                CURRENT_N = FTP_HIGH_N;
+                CURRENT_M = FTP_HIGH_M;
+                selectedTask = work_queue[index];
+                start_time = currentTime + std::chrono::milliseconds{comm_time};
+                finish_time = ftp_high_processing_window;
+                break;
+            }
         }
 
-        for (const auto &dnn_id: processingItem->getDnnIds()) {
-            bool allocated = false;
-            for (const auto &dnn_task: allocated_tasks) {
-                if (dnn_id == dnn_task) {
-                    allocated = true;
-                    break;
-                }
-            }
-            if (!allocated) {
-                web::json::value log;
-                log["dnn_id"] = web::json::value::string(dnn_id);
-                queueManager->logManager->add_log((isReallocation) ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_FAIL
-                                                                   : enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL,
-                                                  log);
-            }
+        if (CURRENT_M != TASK_NOT_FOUND) {
+            work_queue.erase(work_queue.begin() + index);
+            std::shared_ptr<model::HighCompResult> task = std::make_shared<model::HighCompResult>(
+                    selectedTask->getDnnId(),
+                    (*selectedTask->getHostList())[0],
+                    selectedTask->getDeadline(),
+                    enums::dnn_type::high_comp, CURRENT_N, CURRENT_M);
+
+            task->setAllocatedHost(sourceHost);
+            task->setEstimatedStart(start_time);
+            task->setEstimatedFinish(finish_time);
+
+            queueManager->off_high[task->getDnnId()] = task;
+            queueManager->off_total[task->getDnnId()] = std::static_pointer_cast<model::BaseCompResult>(task);
+            std::shared_ptr<model::WorkRequestResponse> workRequestResponse = std::make_shared<model::WorkRequestResponse>(
+                    enums::network_comms_types::work_request_response,
+                    currentTime,
+                    true,
+                    task->getN() * task->getM(),
+                    sourceHost);
+
+            std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
+                    enums::network_comms_types::high_complexity_task_mapping,
+                    currentTime,
+                    task,
+                    task->getAllocatedHost(), true);
+
+
+            queueManager->network->devices[task->getAllocatedHost()]->DNNS.push_back(task);
+
+            std::shared_ptr<model::BaseNetworkCommsModel> comm_task = std::static_pointer_cast<model::BaseNetworkCommsModel>(
+                    high_comp_comms);
+
+            queueManager->networkQueueManager->addTask(comm_task);
+
+            web::json::value log;
+            log["dnn"] = web::json::value(task->convertToJson());
+            log["host_request"] = web::json::value(sourceHost);
+            log["host_capacity"] = web::json::value::number(device_capacity);
+            queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_SUCCESS, log);
+
         }
+        else{
+            std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
+                    enums::network_comms_types::high_complexity_task_mapping,
+                    currentTime,
+                    false, sourceHost);
+
+            std::shared_ptr<model::BaseNetworkCommsModel> work_request_response = std::static_pointer_cast<model::BaseNetworkCommsModel>(
+                    high_comp_comms);
+
+            web::json::value log;
+            log["host_request"] = web::json::value(sourceHost);
+            log["host_capacity"] = web::json::value::number(device_capacity);
+            queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
+
+            queueManager->networkQueueManager->addTask(work_request_response);
+        }
+
+        queueManager->setWorkStealingQueue(work_queue);
+
         netlock.unlock();
         offload_lock.unlock();
-        queueManager->decrementThreadCounter();
     }
 
     void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager) {
@@ -516,9 +445,12 @@ namespace services {
 
         auto dnn_id = dnnToPrune->getDnnId();
         auto allocated_device = dnnToPrune->getAllocatedHost();
-        queueManager->network->devices[allocated_device]->DNNS.erase(std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(), queueManager->network->devices[allocated_device]->DNNS.end(), [dnn_id](std::shared_ptr<model::BaseCompResult> br){
-            return dnn_id == br->getDnnId();
-        }), queueManager->network->devices[allocated_device]->DNNS.end());
+        queueManager->network->devices[allocated_device]->DNNS.erase(
+                std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(),
+                               queueManager->network->devices[allocated_device]->DNNS.end(),
+                               [dnn_id](std::shared_ptr<model::BaseCompResult> br) {
+                                   return dnn_id == br->getDnnId();
+                               }), queueManager->network->devices[allocated_device]->DNNS.end());
 
         auto versionToPrune = dnnToPrune->getVersion();
 
@@ -530,19 +462,6 @@ namespace services {
         dnnToPrune->setVersion(std::chrono::system_clock::now().time_since_epoch().count() * 1000);
         dnnToPrune->setN(0);
         dnnToPrune->setM(0);
-
-        std::vector<std::shared_ptr<model::LinkAct>> links_to_prune;
-        links_to_prune.push_back(dnnToPrune->getUploadData());
-        links_to_prune.push_back(dnnToPrune->getStateUpdate());
-        if (dnnToPrune->getSrcHost() == dnnToPrune->getAllocatedHost())
-            links_to_prune.push_back(dnnToPrune->getTaskAllocation());
-
-        for (const auto &prune_link: links_to_prune) {
-            auto link_id = prune_link->getLinkActivityId();
-            queueManager->network->network_link.erase(std::remove_if(queueManager->network->network_link.begin(), queueManager->network->network_link.end(), [link_id](std::shared_ptr<model::LinkAct> linkAct){
-                return linkAct->getLinkActivityId() == link_id;
-            }), queueManager->network->network_link.end());
-        }
 
         dnnToPrune->setAllocatedHost("");
 
@@ -567,12 +486,9 @@ namespace services {
                 host_list,
                 enums::request_type::high_complexity,
                 dnnToPrune->getDeadline(),
-                std::string(dnnToPrune->getDnnId()), std::initializer_list<std::string>{dnnToPrune->getDnnId()});
+                dnnToPrune->getDnnId());
 
-        highProcessingItem->setReallocation(true);
         queueManager->add_task(highProcessingItem);
-
-
         queueManager->decrementThreadCounter();
     }
 
@@ -629,7 +545,7 @@ namespace services {
                                                      queueManager);
                             break;
                         case enums::request_type::high_complexity:
-                            thread_pool.emplace_back(high_comp_allocation_call, queueManager->current_task.front(),
+                            thread_pool.emplace_back(add_high_comp_work_item, queueManager->current_task.front(),
                                                      queueManager);
                             break;
                         case enums::request_type::halt_req:
@@ -710,6 +626,15 @@ namespace services {
         bw_bytes_per_second -= latency_bytes;
         double bw_bytes_per_ms = bw_bytes_per_second / 1000;
         return bw_bytes_per_ms;
+    }
+
+    const std::vector<std::shared_ptr<model::HighProcessingItem>> &WorkQueueManager::getWorkStealingQueue() const {
+        return work_stealing_queue;
+    }
+
+    void WorkQueueManager::setWorkStealingQueue(
+            const std::vector<std::shared_ptr<model::HighProcessingItem>> &workStealingQueue) {
+        work_stealing_queue = workStealingQueue;
     }
 
 } // services

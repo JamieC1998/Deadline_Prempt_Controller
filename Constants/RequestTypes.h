@@ -13,6 +13,7 @@ namespace constant {
 #define DAG_DISRUPTION 4
 #define LOW_COMPLEXITY 5
 #define HIGH_COMPLEXITY 6
+#define HIGH_WORK_REQUEST 7
 
 }
 #endif //CONTROLLER_REQUESTTYPES_H

@@ -19,9 +19,6 @@ namespace model {
         HighProcessingItem(std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
                            std::chrono::time_point<std::chrono::system_clock> deadline, std::string dnnId);
 
-        HighProcessingItem(std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
-                           std::chrono::time_point<std::chrono::system_clock> deadline, std::string dnnId,
-                           std::vector<std::string> dnnIds);
 
         std::chrono::time_point<std::chrono::system_clock> &getDeadline();
 
@@ -31,13 +28,9 @@ namespace model {
 
         std::map<std::string, std::shared_ptr<model::HighCompResult>> baseResult;
 
-        const std::vector<std::string> &getDnnIds() const;
-
     private:
         std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::string base_dnn_id;
-
-        std::vector<std::string> dnn_ids;
+        std::string dnn_id;
     };
 
 } // model

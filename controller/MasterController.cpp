@@ -12,6 +12,7 @@
 #include "../Constants/CLIENT_DETAILS.h"
 #include "../utils/IPerfTest/IPerfTest.h"
 #include "../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
+#include "../model/data_models/WorkItems/WorkRequest/WorkRequest.h"
 
 
 using namespace web;
@@ -50,7 +51,27 @@ void MasterController::handle_post(const http_request &message) {
             if (path == LOG_RESULT) {
                 std::string result = MasterController::logManager->write_log();
                 message.reply(status_codes::OK, result).wait();
-            } else if (path == HIGH_OFFLOAD_REQUEST) {
+            }
+            else if(path == HIGH_WORK_REQUEST){
+                message.reply(status_codes::OK);
+                enums::request_type requestType = enums::request_type::work_request;
+                int core_capacity = body["capacity"].as_number().to_uint64();
+                std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
+                        std::initializer_list<std::string>{message.remote_address()});
+
+                std::shared_ptr<model::WorkRequest> workRequestItem = std::make_shared<model::WorkRequest>(hostList, requestType, core_capacity);
+
+                web::json::value log;
+                log["source_host"] = web::json::value::string(message.remote_address());
+                log["core_capacity"] = web::json::value::number(core_capacity);
+                MasterController::logManager->add_log(enums::LogTypeEnum::WORK_REQUEST, log);
+
+                auto x = std::thread(services::high_comp_allocation_call, workRequestItem, workQueueManager);
+                x.detach();
+//                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(workRequestItem));
+
+            }
+            else if (path == HIGH_OFFLOAD_REQUEST) {
                 message.reply(status_codes::OK);
                 enums::request_type requestType = enums::request_type::high_complexity;
                 uint64_t deadline_ms = body["deadline"].as_number().to_uint64();
@@ -64,18 +85,15 @@ void MasterController::handle_post(const http_request &message) {
                 std::string dnn_id = body["dnn_id"].as_string();
                 dnn_id = message.remote_address() + "_" + dnn_id;
 
-                std::vector<std::string> dnn_ids;
-
                 for (int i = 0; i < task_count; i++) {
-                    dnn_ids.push_back(dnn_id + "_" + std::to_string(i));
+                    std::shared_ptr<model::HighProcessingItem> highProcessingItem = std::make_shared<model::HighProcessingItem>(
+                            hostList,
+                            requestType,
+                            deadline,
+                            dnn_id + "_" + std::to_string(i));
+                    workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(highProcessingItem));
                 }
 
-                std::shared_ptr<model::HighProcessingItem> highProcessingItem = std::make_shared<model::HighProcessingItem>(
-                        hostList,
-                        requestType,
-                        deadline,
-                        dnn_id, dnn_ids);
-                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(highProcessingItem));
 
                 web::json::value log;
                 log["dnn_id"] = web::json::value::string(dnn_id);

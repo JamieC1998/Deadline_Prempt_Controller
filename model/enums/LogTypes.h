@@ -37,7 +37,8 @@ namespace enums {
         ADD_NETWORK_TASK = 27,
         HIGH_COMP_REALLOCATION_SUCCESS = 28,
         VIOLATED_DEADLINE = 29,
-        VIOLATED_DEADLINE_REQUEST = 30
+        VIOLATED_DEADLINE_REQUEST = 30,
+        WORK_REQUEST = 31
     };
 
 } // model

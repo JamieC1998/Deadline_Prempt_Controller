@@ -142,11 +142,14 @@ namespace model {
 
     BaseCompResult::BaseCompResult(std::string dnnId, std::string srcHost,
                                    const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                                   std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType) : dnn_id(std::move(dnnId)),
-                                                                                                   srcHost(std::move(srcHost)),
+                                   std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType) : dnn_id(
+            std::move(dnnId)),
+                                                                                                   srcHost(std::move(
+                                                                                                           srcHost)),
                                                                                                    deadline(deadline),
-                                                                                                   upload_data(std::move(
-                                                                                                           uploadData)),
+                                                                                                   upload_data(
+                                                                                                           std::move(
+                                                                                                                   uploadData)),
                                                                                                    dnnType(dnnType),
                                                                                                    uniqueDnnId(
                                                                                                            uniqueDnnIdCounter) {
@@ -167,6 +170,13 @@ namespace model {
 
     void BaseCompResult::setStateUpdate(const std::shared_ptr<LinkAct> &stateUpdate) {
         state_update = stateUpdate;
+    }
+
+    BaseCompResult::BaseCompResult(std::string dnnId, std::string srcHost,
+                                   const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                                   enums::dnn_type dnnType) : dnn_id(dnnId), srcHost(srcHost), deadline(deadline),
+                                                              dnnType(dnnType), uniqueDnnId(uniqueDnnIdCounter) {
+        uniqueDnnIdCounter++;
     }
 
 

@@ -97,47 +97,47 @@ namespace services {
     highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
                        std::shared_ptr<services::NetworkQueueManager> queueManager) {
         auto highCompComm = std::static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
-        std::shared_ptr<model::HighCompResult> br = highCompComm->getAllocatedTask();
         std::string hostName = highCompComm->getHost();
 
-        json::value task_json = br->convertToJson();
         json::value output;
-
         web::json::value log;
-        log["dnn"] = web::json::value(br->convertToJson());
+
         log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
                 comm_model->getCommTime().time_since_epoch()).count());
+
+        log["success"] = web::json::value::boolean(highCompComm->isSuccess());
+
+        output["success"] = web::json::value::boolean(highCompComm->isSuccess());
+        json::value dnn;
+
+        if (highCompComm->isSuccess()) {
+            std::shared_ptr<model::HighCompResult> br = highCompComm->getAllocatedTask();
+            bool is_source_allocation = br->getSrcHost() == br->getAllocatedHost();
+
+            log["dnn"] = web::json::value(br->convertToJson());
+            dnn["source_host"] = web::json::value::string(br->getSrcHost());
+            dnn["allocated_host"] = web::json::value::string(is_source_allocation ? "self" : br->getAllocatedHost());
+            dnn["start_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    br->getEstimatedStart().time_since_epoch()).count());
+            dnn["finish_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    br->getEstimatedFinish().time_since_epoch()).count());
+            dnn["dnn_id"] = web::json::value::string(br->getDnnId());
+            dnn["N"] = web::json::value::number(br->getN());
+            dnn["M"] = web::json::value::number(br->getM());
+            dnn["version"] = web::json::value::number(br->getVersion());
+            output["dnn"] = dnn;
+        }
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_ALLOCATION_HIGH, log);
 
-        bool is_source_allocation = br->getSrcHost() == br->getAllocatedHost();
-        output["allocated_host"] = web::json::value::string( is_source_allocation ? "self" : br->getAllocatedHost());
-        if(!is_source_allocation)
-            output["upload_data"] = br->getTaskAllocation()->convertToJson();
-
-        output["start_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(br->getEstimatedStart().time_since_epoch()).count());
-        output["finish_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(br->getEstimatedFinish().time_since_epoch()).count());
-        output["dnn_id"] = web::json::value::string(br->getDnnId());
-        output["N"] = web::json::value::number(br->getN());
-        output["M"] = web::json::value::number(br->getM());
-        output["version"] = web::json::value::number(br->getVersion());
-
-
         std::chrono::time_point<std::chrono::system_clock> comm_start = std::chrono::system_clock::now();
-        std::string baseURI = "http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT);
+        std::string baseURI = "http://" + highCompComm->getHost() + ":" + std::string(HIGH_CLIENT_PORT);
         std::cout << "HIGH_COMP_ALLOCATION: " << baseURI << "/" << std::string(HIGH_TASK_ALLOCATION) << std::endl;
         http::client::http_client(baseURI).request(
                 http::methods::POST,
                 "/" +
                 std::string(HIGH_TASK_ALLOCATION),
-                output.serialize()).then(
-                [comm_start, br, highCompComm](web::http::http_response response) {
-                    try {
-                        std::cout << "Status code: " << response.status_code() << std::endl;
-                    }
-                    catch (exception e) {
-                        std::cout << e.what() << std::endl;
-                    }
-                });
+                output.serialize()).then([](web::http::http_response response) {
+        });
 
     }
 
@@ -194,15 +194,20 @@ namespace services {
         log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
                 comm_model->getCommTime().time_since_epoch()).count());
         log["estimated_start"] = web::json::value::string(utils::debugTimePointToString(task_res->getEstimatedStart()));
-        log["estimated_finish"] = web::json::value::string(utils::debugTimePointToString(task_res->getEstimatedFinish()));
+        log["estimated_finish"] = web::json::value::string(
+                utils::debugTimePointToString(task_res->getEstimatedFinish()));
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
 
-        web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(
-                        web::http::methods::POST,
-                        "/" + std::string(LOW_TASK_ALLOCATION), result.serialize())
-                .then([](web::http::http_response response) {
-                    std::cout << "Status code: " << response.status_code() << std::endl;
+        web:
+        http::client::http_client("http://" + host + ":" + std::string(HIGH_CLIENT_PORT)).request(
+                web::http::methods::POST, "/" + std::string(RAISE_CAP), web::json::value().serialize()).then(
+                [host, result](web::http::http_response response) {
+                    web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(
+                            web::http::methods::POST,
+                            "/" + std::string(LOW_TASK_ALLOCATION), result.serialize());
                 });
+
+
     }
 
     void NetworkQueueManager::addTask(std::shared_ptr<model::BaseNetworkCommsModel> comm_model) {

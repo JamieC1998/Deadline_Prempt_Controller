@@ -9,7 +9,7 @@
 
 using namespace constant;
 namespace enums {
-    enum class request_type : int { low_complexity=LOW_COMPLEXITY, high_complexity=HIGH_COMPLEXITY, halt_req=HALT_REQ, state_update=REQ_TYPE_STATE_UPDATE};
+    enum class request_type : int { work_request=HIGH_WORK_REQUEST,  low_complexity=LOW_COMPLEXITY, high_complexity=HIGH_COMPLEXITY, halt_req=HALT_REQ, state_update=REQ_TYPE_STATE_UPDATE};
 }
 
 #endif //CONTROLLER_REQUESTTYPEENUM_H

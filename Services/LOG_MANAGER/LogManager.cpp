@@ -107,6 +107,8 @@ namespace services {
                 return "VIOLATED_DEADLINE";
             case enums::LogTypeEnum::VIOLATED_DEADLINE_REQUEST:
                 return "VIOLATED_DEADLINE_REQUEST";
+            case enums::LogTypeEnum::WORK_REQUEST:
+                return "WORK_REQUEST";
         }
         return "NaN";
     }
