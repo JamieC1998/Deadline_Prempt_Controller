@@ -64,11 +64,9 @@ void MasterController::handle_post(const http_request &message) {
                 web::json::value log;
                 log["source_host"] = web::json::value::string(message.remote_address());
                 log["core_capacity"] = web::json::value::number(core_capacity);
-                MasterController::logManager->add_log(enums::LogTypeEnum::WORK_REQUEST, log);
 
                 auto x = std::thread(services::high_comp_allocation_call, workRequestItem, workQueueManager);
                 x.detach();
-//                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(workRequestItem));
 
             }
             else if (path == HIGH_OFFLOAD_REQUEST) {

@@ -8,23 +8,24 @@
 #include "Constants/CLIENT_DETAILS.h"
 
 int main() {
-    std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();
-    std::shared_ptr<services::NetworkQueueManager> networkQueueManager = std::make_shared<services::NetworkQueueManager>(
-            logManager);
-    auto *workQueueManager = new services::WorkQueueManager(
-            logManager, networkQueueManager);
-
-    MasterController controller = MasterController(logManager, workQueueManager);
-    web::http::client::http_client_config cfg;
-    cfg.guarantee_order();
-    web::http::experimental::listener::http_listener listener(
-            "http://" + std::string(CONTROLLER_HOSTNAME) + ":" + std::to_string(CONTROLLER_REST_PORT) + "/controller");
-    listener.support(web::http::methods::GET,
-                     std::bind(&MasterController::handle_get, &controller, std::placeholders::_1));
-    listener.support(web::http::methods::POST,
-                     std::bind(&MasterController::handle_post, &controller, std::placeholders::_1));
-
     try {
+        std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();
+        std::shared_ptr<services::NetworkQueueManager> networkQueueManager = std::make_shared<services::NetworkQueueManager>(
+                logManager);
+        auto *workQueueManager = new services::WorkQueueManager(
+                logManager, networkQueueManager);
+
+        MasterController controller = MasterController(logManager, workQueueManager);
+        web::http::client::http_client_config cfg;
+        cfg.guarantee_order();
+        web::http::experimental::listener::http_listener listener(
+                "http://" + std::string(CONTROLLER_HOSTNAME) + ":" + std::to_string(CONTROLLER_REST_PORT) +
+                "/controller");
+        listener.support(web::http::methods::GET,
+                         std::bind(&MasterController::handle_get, &controller, std::placeholders::_1));
+        listener.support(web::http::methods::POST,
+                         std::bind(&MasterController::handle_post, &controller, std::placeholders::_1));
+
         listener.open().wait();
         std::cout << "Listening for requests at: " << listener.uri().to_string() << std::endl;
 

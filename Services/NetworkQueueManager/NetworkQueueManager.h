@@ -20,7 +20,7 @@ namespace services {
 
         std::mutex &getNetworkMutex();
 
-        [[noreturn]] static void initNetworkCommLoop(std::shared_ptr<services::NetworkQueueManager> queueManager);
+        [[noreturn]] static void initNetworkCommLoop(const std::shared_ptr<services::NetworkQueueManager>& queueManager);
 
         void addTask(std::shared_ptr<model::BaseNetworkCommsModel> comm_model);
 
@@ -34,8 +34,8 @@ namespace services {
     };
 
     static void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
-    static void highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
+    static void highTaskAllocation(const std::shared_ptr<model::BaseNetworkCommsModel>& comm_model, const std::shared_ptr<services::NetworkQueueManager>& queueManager);
     static void lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
-    static void initialise_experiment(std::shared_ptr<services::NetworkQueueManager> queueManager);
+    static void initialise_experiment(const std::shared_ptr<services::NetworkQueueManager>& queueManager);
 }
 #endif //CONTROLLER_NETWORKQUEUEMANAGER_H

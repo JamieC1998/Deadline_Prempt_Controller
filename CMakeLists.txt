@@ -3,6 +3,8 @@ project(controller)
 
 set(CMAKE_CXX_STANDARD 17)
 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+
 set(OPENSSL_ROOT_DIR "/opt/homebrew/opt/openssl@3/")
 set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 set(OPENSSL_LIBRARIES "${OPENSSL_ROOT_DIR}/lib")
