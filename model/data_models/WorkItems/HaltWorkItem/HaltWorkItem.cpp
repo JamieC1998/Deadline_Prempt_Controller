@@ -21,4 +21,9 @@ namespace model {
     const std::chrono::time_point<std::chrono::system_clock> &HaltWorkItem::getFinTime() const {
         return fin_time;
     }
+
+    HaltWorkItem::HaltWorkItem(enums::request_type requestType, const std::string &hostToExamine) : WorkItem(
+            requestType), host_to_examine(hostToExamine) {
+
+    }
 } // model

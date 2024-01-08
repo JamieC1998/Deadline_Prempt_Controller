@@ -74,7 +74,7 @@ namespace model {
 
     HighCompResult::HighCompResult(const std::string &dnnId, const std::string &srcHost,
                                    const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                                   enums::dnn_type dnnType, int n, int m): BaseCompResult(dnnId, srcHost, deadline, dnnType), M(m), N(n) {
+                                   enums::dnn_type dnnType, int n, int m): BaseCompResult(dnnId, srcHost, deadline, dnnType, m * n), M(m), N(n) {
 
     }
 } // model

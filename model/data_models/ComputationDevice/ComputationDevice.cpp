@@ -55,6 +55,14 @@ namespace model {
         }
         result["tasks"] = web::json::value::array(dnn_list);
         return result;
+    }
+
+    const std::string &ComputationDevice::getLastLowCompId() const {
+        return last_low_comp_id;
+    }
+
+    void ComputationDevice::setLastLowCompId(const std::string &lastLowCompId) {
+        last_low_comp_id = lastLowCompId;
     };
 
 } // model

@@ -9,11 +9,13 @@
 
 namespace model {
 
-    class HaltWorkItem: public WorkItem{
+    class HaltWorkItem : public WorkItem {
     public:
         HaltWorkItem(enums::request_type requestType, const std::string &hostToExamine,
                      const std::chrono::time_point<std::chrono::system_clock> &startTime,
                      const std::chrono::time_point<std::chrono::system_clock> &finTime);
+
+        HaltWorkItem(enums::request_type requestType, const std::string &hostToExamine);
 
         const std::string &getHostToExamine() const;
 

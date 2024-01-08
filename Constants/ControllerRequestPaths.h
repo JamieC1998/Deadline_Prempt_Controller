@@ -13,6 +13,7 @@ namespace constants {
 #define STATE_UPDATE "/state_update"
 #define LOG_RESULT "/log_result"
 #define HIGH_WORK_REQUEST "/high_work_request"
+#define RETURN_TASK "/ret_task"
 }
 
 #endif //CONTROLLER_CONTROLLERREQUESTPATHS_H

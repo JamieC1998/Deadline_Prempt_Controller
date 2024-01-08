@@ -8,6 +8,8 @@
 #include "../../Constants/CLIENT_DETAILS.h"
 #include "../../Constants/FTP_CONFIG.h"
 #include "../../model/data_models/ComputationDevice/ComputationDevice.h"
+#include "../../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
+#include "../../model/data_models/WorkItems/WorkRequest/WorkRequest.h"
 
 namespace utils {
     //Credit to the anonymous user who posted this https://www.mycompiler.io/view/43wsMbrMcmx
@@ -90,6 +92,57 @@ namespace utils {
         std::stringstream ss;
         ss << std::put_time(&tm, format) << "." << std::setfill('0') << std::setw(3) << ms.count();
         return ss.str();
+    }
+
+    bool compare_work_items(std::shared_ptr<model::WorkItem> a, std::shared_ptr<model::WorkItem> b){
+        if (a->getRequestType() == b->getRequestType()) {
+            if (a->getRequestType() == enums::request_type::low_complexity) {
+                auto a_cast = std::static_pointer_cast<model::LowProcessingItem>(a);
+                auto b_cast = std::static_pointer_cast<model::LowProcessingItem>(b);
+
+                return a_cast->getDeadline() < b_cast->getDeadline();
+            } else if (a->getRequestType() == enums::request_type::high_complexity) {
+                auto a_cast = std::static_pointer_cast<model::HighProcessingItem>(a);
+                auto b_cast = std::static_pointer_cast<model::HighProcessingItem>(b);
+
+                return a_cast->getDeadline() < b_cast->getDeadline();
+            }
+            else if (a->getRequestType() == enums::request_type::work_request){
+                auto a_cast = std::static_pointer_cast<model::WorkRequest>(a);
+                auto b_cast = std::static_pointer_cast<model::WorkRequest>(b);
+
+                return a_cast->getCreation() < b_cast->getCreation();
+            }
+            return true;
+        }
+
+        return a->getRequestType() < b->getRequestType();
+    }
+
+    std::pair<bool, std::unordered_map<std::string, std::chrono::time_point<std::chrono::system_clock>>> search_and_prune_version(std::string request_version, std::unordered_map<std::string, std::chrono::time_point<std::chrono::system_clock>> &request_version_list) {
+        bool version_found = false;
+
+        std::unordered_map<std::string, std::chrono::time_point<std::chrono::system_clock>> new_request_list;
+        auto current_time = std::chrono::system_clock::now();
+
+        for (const auto &entry : request_version_list) {
+            std::string vers = entry.first;
+            auto time_val = entry.second;
+
+            if (vers == request_version) {
+                version_found = true;
+            }
+
+            if (current_time < time_val + std::chrono::seconds(10)) {
+                new_request_list[vers] = time_val;
+            }
+        }
+
+        if (!version_found) {
+            new_request_list[request_version] = current_time;
+        }
+
+        return std::make_pair(version_found, new_request_list);
     }
 } // utils
 

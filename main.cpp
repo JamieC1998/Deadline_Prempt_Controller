@@ -7,13 +7,28 @@
 #include "controller/MasterController.h"
 #include "Constants/CLIENT_DETAILS.h"
 
+void unhandledExceptionCallback() {
+    try {
+        throw; // Re-throw the exception to obtain exception information
+    } catch (const std::exception &e) {
+        std::cout << "Unhandled exception caught: " << e.what() << std::endl;
+        std::cout << e.what() << std::endl;
+    } catch (const web::http::http_exception &e) {
+        std::cout << "Unhandled unknown exception caught" << std::endl;
+        std::cout << e.what() << std::endl;
+    }
+
+    std::abort(); // Terminate the program
+}
+
 int main() {
+    std::set_terminate(unhandledExceptionCallback);
+
     try {
         std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();
-        std::shared_ptr<services::NetworkQueueManager> networkQueueManager = std::make_shared<services::NetworkQueueManager>(
-                logManager);
+
         auto *workQueueManager = new services::WorkQueueManager(
-                logManager, networkQueueManager);
+                logManager);
 
         MasterController controller = MasterController(logManager, workQueueManager);
         web::http::client::http_client_config cfg;
@@ -31,13 +46,12 @@ int main() {
 
         auto work_thread = std::thread(services::WorkQueueManager::main_loop, workQueueManager);
         work_thread.detach();
-        auto network_thread = std::thread(services::NetworkQueueManager::initNetworkCommLoop, networkQueueManager);
-        network_thread.detach();
+
         while (true);
     }
     catch (std::exception &e) {
-        std::cerr << "something wrong has happened! ;)" << '\n';
-        std::cerr << e.what() << "\n";
+        std::cout << "something wrong has happened! ;)" << '\n';
+        std::cout << e.what() << "\n";
     }
     return 0;
 }

@@ -12,28 +12,26 @@
 #include "../../model/data_models/Network/Network.h"
 #include "../../model/data_models/CompResult/HighCompResult/HighCompResult.h"
 #include "../../model/data_models/WorkItems/BaseWorkItem/WorkItem.h"
-#include "../NetworkQueueManager/NetworkQueueManager.h"
 #include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
 #include "../LOG_MANAGER/LogManager.h"
 #include "../../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
+#include "cpprest/http_client.h"
+#include "../../model/data_models/NetworkCommsModels/BaseNetworkCommsModel/BaseNetworkCommsModel.h"
 
 namespace services {
 
     class WorkQueueManager {
     public:
-        explicit WorkQueueManager(std::shared_ptr<LogManager> ptr, std::shared_ptr<NetworkQueueManager> sharedPtr);
+        explicit WorkQueueManager(std::shared_ptr<LogManager> ptr);
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
         [[noreturn]] static void main_loop(WorkQueueManager* queueManager);
 
-        static void decrementThreadCounter();
-
         std::mutex work_queue_lock;
         std::mutex network_lock = std::mutex();
         std::mutex offloaded_lock = std::mutex();
         std::shared_ptr<model::Network> network;
-        std::shared_ptr<services::NetworkQueueManager> networkQueueManager;
 
         double getAverageBitsPerSecond() const;
 
@@ -57,9 +55,6 @@ namespace services {
         void setWorkStealingQueue(const std::vector<std::shared_ptr<model::HighProcessingItem>> &workStealingQueue);
 
     private:
-        static std::atomic<int> thread_counter;
-        std::vector<std::shared_ptr<model::WorkItem>> current_task;
-        //Maybe needs to be a dequeue
         std::vector<std::shared_ptr<model::WorkItem>> work_queue;
         double average_bits_per_second = 0.0;
         double jitter = 0.0;
@@ -76,6 +71,12 @@ namespace services {
     void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
     void add_high_comp_work_item(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager);
+
+    void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::LogManager> logManager);
+
+    void highTaskAllocation(const std::shared_ptr<model::BaseNetworkCommsModel>& comm_model, std::shared_ptr<services::LogManager> logManager);
+
+    void lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::LogManager> logManager);
 
 } // services
 

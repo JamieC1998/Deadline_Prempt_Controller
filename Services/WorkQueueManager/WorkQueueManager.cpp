@@ -5,14 +5,12 @@
 #include <thread>
 #include <utility>
 #include "WorkQueueManager.h"
-#include "../../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
 #include "../LowCompServices/LowCompServices.h"
 #include "../../model/data_models/WorkItems/StateUpdate/StateUpdate.h"
 #include "../NetworkServices/NetworkServices.h"
 #include "../../Constants/ModeMacros.h"
 #include "../../utils/UtilFunctions/UtilFunctions.h"
 #include "../../Constants/CLIENT_DETAILS.h"
-#include "../HighCompServices/HighCompServices.h"
 #include "../../Constants/AllocationMacros.h"
 #include "../../model/data_models/NetworkCommsModels/HighComplexityAllocation/HighComplexityAllocationComms.h"
 #include "../../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
@@ -23,28 +21,34 @@
 #include "../../Constants/RequestSizes.h"
 #include "../../Constants/FTP_CONFIG.h"
 #include "../../model/data_models/WorkItems/WorkRequest/WorkRequest.h"
-#include "../../model/data_models/NetworkCommsModels/WorkRequestResponse/WorkRequestResponse.h"
+
+using namespace web;
 
 namespace services {
-    std::atomic<int> WorkQueueManager::thread_counter = 0;
 
     void state_update_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
         try {
             std::shared_ptr<model::StateUpdate> stateUpdate = std::static_pointer_cast<model::StateUpdate>(item);
 
+            auto work_type = stateUpdate->getRequestType();
+
             std::unique_lock<std::mutex> off_lock(queueManager->offloaded_lock, std::defer_lock);
-            off_lock.lock();
-
-
-            auto dnn = queueManager->off_total[stateUpdate->getDnnId()];
-
             std::unique_lock<std::mutex> net_lock(queueManager->network_lock, std::defer_lock);
 
+            off_lock.lock();
             net_lock.lock();
+
+            auto dnn_id = stateUpdate->getDnnId();
+            if (!queueManager->off_total.count(dnn_id)) {
+                off_lock.unlock();
+                net_lock.unlock();
+                return;
+            }
+
+            auto dnn = queueManager->off_total[dnn_id];
 
             std::string allocated_device = dnn->getAllocatedHost();
 
-            auto dnn_id = dnn->getDnnId();
             queueManager->network->devices[allocated_device]->DNNS.erase(
                     std::remove_if(queueManager->network->devices[allocated_device]->DNNS.begin(),
                                    queueManager->network->devices[allocated_device]->DNNS.end(),
@@ -81,18 +85,20 @@ namespace services {
 
 
             net_lock.unlock();
-            if (stateUpdate->isSuccess())
+            if (work_type != enums::request_type::return_task && stateUpdate->isSuccess())
                 dnn->setActualFinish(stateUpdate->getFinishTime());
             web::json::value log;
 
-            if (dnn->getDnnType() == enums::dnn_type::low_comp) {
-                log["dnn_details"] = std::static_pointer_cast<model::LowCompResult>(dnn)->convertToJson();
-                queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_FINISH, log);
-            } else {
-                log["dnn_details"] = std::static_pointer_cast<model::HighCompResult>(dnn)->convertToJson();
-                queueManager->logManager->add_log(stateUpdate->isSuccess() ? enums::LogTypeEnum::HIGH_COMP_FINISH
-                                                                           : enums::LogTypeEnum::VIOLATED_DEADLINE,
-                                                  log);
+            if (work_type != enums::request_type::return_task) {
+                if (dnn->getDnnType() == enums::dnn_type::low_comp) {
+                    log["dnn"] = std::static_pointer_cast<model::LowCompResult>(dnn)->convertToJson();
+                    queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_FINISH, log);
+                } else {
+                    log["dnn"] = std::static_pointer_cast<model::HighCompResult>(dnn)->convertToJson();
+                    queueManager->logManager->add_log(stateUpdate->isSuccess() ? enums::LogTypeEnum::HIGH_COMP_FINISH
+                                                                               : enums::LogTypeEnum::VIOLATED_DEADLINE,
+                                                      log);
+                }
             }
 
 
@@ -101,7 +107,6 @@ namespace services {
         catch (std::exception &e) {
             std::cout << "WorkQueueManager, State Update: Crash" << e.what() << std::endl;
         }
-        queueManager->decrementThreadCounter();
     }
 
     /*Function receives alow complexity DNN allocation request*/
@@ -110,7 +115,10 @@ namespace services {
             auto proc_item = std::static_pointer_cast<model::LowProcessingItem>(item);
 
             std::unique_lock<std::mutex> net_lock(queueManager->network_lock, std::defer_lock);
+            std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
             net_lock.lock();
+            offload_lock.lock();
+
             std::map<std::string, std::shared_ptr<model::ComputationDevice>> &devices = queueManager->network->devices;
 
             /*Need to create a copy of the network list so that we can keep track of incomplete net allocations */
@@ -118,8 +126,6 @@ namespace services {
             for (const auto &i: queueManager->network->network_link) {
                 copyList.push_back(i);
             }
-
-            net_lock.unlock();
 
             /* Fetching bytes and latency from the stored net parameters from iperf test */
             double bw_bytes = (queueManager->getAverageBitsPerSecond() / 8);
@@ -134,12 +140,9 @@ namespace services {
 
             std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
-            net_lock.lock();
-
             auto times = services::findLinkSlot(
                     currentTime, float(bw_bytes), LOW_TASK_SIZE, copyList);
 
-            net_lock.unlock();
             std::shared_ptr<model::LinkAct> state_transfer = std::make_shared<model::LinkAct>(
                     std::make_pair(times->first, times->second));
             state_transfer->setHostNames(std::make_pair(CONTROLLER_HOSTNAME, host));
@@ -152,18 +155,16 @@ namespace services {
                           return a->getStartFinTime().second < b->getStartFinTime().second;
                       });
 
-            net_lock.lock();
 
             /* Using the input upload window for each task generated we now allocate a time slot on their respective hosts */
             auto result = services::allocate_task(item, devices, times);
             auto time_window = result.second;
-            net_lock.unlock();
+
             /* If we cannot allocate a device for even one task we instead create a new allocation request and a halt request */
             if (!result.first) {
 #if DEADLINE_PREMPT
                 std::shared_ptr<model::WorkItem> workItem = std::make_shared<model::HaltWorkItem>(
-                        enums::request_type::halt_req, host, time_window->first,
-                        time_window->second);
+                        enums::request_type::halt_req, host);
 
                 queueManager->add_task(workItem);
                 auto newTask = std::make_shared<model::LowProcessingItem>(item->getHostList(),
@@ -185,7 +186,8 @@ namespace services {
                 log["deadline"] = web::json::value::number(proc_item->getDeadline().time_since_epoch().count() * 1000);
                 log["network"] = queueManager->network->convertToJson();
                 queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL, log);
-                queueManager->decrementThreadCounter();
+                net_lock.unlock();
+                offload_lock.unlock();
                 return;
 
             } else {
@@ -210,15 +212,11 @@ namespace services {
 
                 bR->setStateUpdate(state_update);
 
-                std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
-                offload_lock.lock();
-
                 queueManager->off_low[bR->getDnnId()] = bR;
                 queueManager->off_total[bR->getDnnId()] = bR;
-                offload_lock.unlock();
+
 
                 /* Add communication times to the network link */
-                net_lock.lock();
                 queueManager->network->addComm(state_transfer);
                 queueManager->network->addComm(state_update);
 
@@ -232,19 +230,21 @@ namespace services {
                                 bR->getSrcHost());
 
                 queueManager->network->devices[bR->getSrcHost()]->DNNS.push_back(bR);
+                queueManager->network->devices[bR->getSrcHost()]->setLastLowCompId(bR->getDnnId());
+
                 web::json::value log;
-                log["dnn_details"] = bR->convertToJson();
+                log["dnn"] = bR->convertToJson();
                 queueManager->logManager->add_log(
                         proc_item->isReallocation() ? enums::LogTypeEnum::LOW_COMP_PREMPT_ALLOCATION_SUCCESS
                                                     : enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS, log);
-                queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
+                services::lowTaskAllocation(baseNetworkCommsModel, queueManager->logManager);
                 net_lock.unlock();
+                offload_lock.unlock();
             }
         }
         catch (std::exception &e) {
             std::cout << "WorkQueueManager, Low Comp Allocation: Crash" << e.what() << std::endl;
         }
-        queueManager->decrementThreadCounter();
     }
 
     void add_high_comp_work_item(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
@@ -271,6 +271,14 @@ namespace services {
             for (const auto &task: work_stealing_queue) {
                 if (ftp_high_processing_window < task->getDeadline())
                     newList.push_back(task);
+                else {
+                    std::cout << "TASK DEADLINE VIOLATED " << task->getDnnId() << std::endl;
+                    web::json::value log;
+                    log["dnn"] = web::json::value();
+                    log["dnn"]["dnn_id"] = web::json::value::string(task->getDnnId());
+                    queueManager->logManager->add_log(enums::LogTypeEnum::VIOLATED_DEADLINE,
+                                                      log);
+                }
             }
 
             queueManager->setWorkStealingQueue(newList);
@@ -279,43 +287,59 @@ namespace services {
         catch (std::exception &e) {
             std::cout << "WorkQueueManager, Add High Comp: Crash" << e.what() << std::endl;
         }
-        queueManager->decrementThreadCounter();
+    }
+
+    int gather_local_capacity_now(std::shared_ptr<model::ComputationDevice> device) {
+        auto ct = std::chrono::system_clock::now();
+
+        int cap = 0;
+
+        for (const auto DNN: device->DNNS)
+            cap += DNN->getCoreAllocation();
+
+        return cap;
     }
 
     void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
         try {
             auto workRequest = std::static_pointer_cast<model::WorkRequest>(item);
 
-            int device_capacity = MAX_CORE_ALLOWANCE - workRequest->getCapacity();
-
-            auto currentTime = std::chrono::system_clock::now();
-            std::string sourceHost = (*item->getHostList())[0];
-
-            if (device_capacity < FTP_LOW_CORE) {
-                std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
-                        enums::network_comms_types::high_complexity_task_mapping,
-                        currentTime,
-                        false, sourceHost);
-
-                std::shared_ptr<model::BaseNetworkCommsModel> work_request_response = std::static_pointer_cast<model::BaseNetworkCommsModel>(
-                        high_comp_comms);
-
-                queueManager->networkQueueManager->addTask(work_request_response);
-                web::json::value log;
-                log["host_request"] = web::json::value(sourceHost);
-                log["host_capacity"] = web::json::value::number(device_capacity);
-                queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
-
-                queueManager->decrementThreadCounter();
-                return;
-            }
-
-            auto bytes_per_ms = queueManager->getBytesPerMillisecond();
+            int request_counter = workRequest->getRequestCounter();
 
             std::unique_lock<std::mutex> netlock(queueManager->network_lock, std::defer_lock);
             std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
             offload_lock.lock();
             netlock.lock();
+
+            std::string sourceHost = (*item->getHostList())[0];
+            int device_capacity =
+                    MAX_CORE_ALLOWANCE - gather_local_capacity_now(queueManager->network->devices[sourceHost]);
+
+            auto currentTime = std::chrono::system_clock::now();
+
+            if (device_capacity < FTP_LOW_CORE) {
+                std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
+                        enums::network_comms_types::high_complexity_task_mapping,
+                        currentTime,
+                        false, sourceHost, request_counter);
+
+                std::shared_ptr<model::BaseNetworkCommsModel> work_request_response = std::static_pointer_cast<model::BaseNetworkCommsModel>(
+                        high_comp_comms);
+
+
+                web::json::value log;
+                log["host_request"] = web::json::value(sourceHost);
+                log["host_capacity"] = web::json::value::number(device_capacity);
+                log["request_counter"] = web::json::value::number(request_counter);
+                queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
+
+                services::highTaskAllocation(work_request_response, queueManager->logManager);
+                offload_lock.unlock();
+                netlock.unlock();
+                return;
+            }
+
+            auto bytes_per_ms = queueManager->getBytesPerMillisecond();
 
             std::shared_ptr<model::HighCompResult> result;
 
@@ -372,18 +396,12 @@ namespace services {
 
                 queueManager->off_high[task->getDnnId()] = task;
                 queueManager->off_total[task->getDnnId()] = std::static_pointer_cast<model::BaseCompResult>(task);
-                std::shared_ptr<model::WorkRequestResponse> workRequestResponse = std::make_shared<model::WorkRequestResponse>(
-                        enums::network_comms_types::work_request_response,
-                        currentTime,
-                        true,
-                        task->getN() * task->getM(),
-                        sourceHost);
 
                 std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
                         enums::network_comms_types::high_complexity_task_mapping,
                         currentTime,
                         task,
-                        task->getAllocatedHost(), true);
+                        sourceHost, true, request_counter);
 
 
                 queueManager->network->devices[task->getAllocatedHost()]->DNNS.push_back(task);
@@ -391,19 +409,19 @@ namespace services {
                 std::shared_ptr<model::BaseNetworkCommsModel> comm_task = std::static_pointer_cast<model::BaseNetworkCommsModel>(
                         high_comp_comms);
 
-                queueManager->networkQueueManager->addTask(comm_task);
-
                 web::json::value log;
                 log["dnn"] = web::json::value(task->convertToJson());
                 log["host_request"] = web::json::value(sourceHost);
                 log["host_capacity"] = web::json::value::number(device_capacity);
+                log["request_counter"] = web::json::value::number(request_counter);
                 queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_SUCCESS, log);
+                services::highTaskAllocation(comm_task, queueManager->logManager);
 
             } else {
                 std::shared_ptr<model::HighComplexityAllocationComms> high_comp_comms = std::make_shared<model::HighComplexityAllocationComms>(
                         enums::network_comms_types::high_complexity_task_mapping,
                         currentTime,
-                        false, sourceHost);
+                        false, sourceHost, request_counter);
 
                 std::shared_ptr<model::BaseNetworkCommsModel> work_request_response = std::static_pointer_cast<model::BaseNetworkCommsModel>(
                         high_comp_comms);
@@ -411,9 +429,10 @@ namespace services {
                 web::json::value log;
                 log["host_request"] = web::json::value(sourceHost);
                 log["host_capacity"] = web::json::value::number(device_capacity);
+                log["request_counter"] = web::json::value::number(request_counter);
                 queueManager->logManager->add_log(enums::LogTypeEnum::HIGH_COMP_ALLOCATION_FAIL, log);
 
-                queueManager->networkQueueManager->addTask(work_request_response);
+                services::highTaskAllocation(work_request_response, queueManager->logManager);
             }
 
             queueManager->setWorkStealingQueue(work_queue);
@@ -435,8 +454,6 @@ namespace services {
             }
 
             auto sourceDeviceId = haltWorkItem->getHostToExamine();
-            auto startTime = haltWorkItem->getStartTime();
-            auto finTime = haltWorkItem->getFinTime();
 
             std::unique_lock<std::mutex> offload_lock(queueManager->offloaded_lock, std::defer_lock);
             std::unique_lock<std::mutex> network_lock(queueManager->network_lock, std::defer_lock);
@@ -448,9 +465,10 @@ namespace services {
 
             std::vector<std::pair<int, std::shared_ptr<model::HighCompResult>>> haltCandidates;
 
+            haltCandidates.reserve(tasks.size());
+
             for (int i = 0; i < tasks.size(); i++) {
-                if ((max(startTime, tasks[i]->getEstimatedStart()) -
-                     min(finTime, tasks[i]->getEstimatedFinish())).count() <= 0)
+                if(tasks[i]->getDnnType() != enums::dnn_type::low_comp)
                     haltCandidates.emplace_back(i, std::static_pointer_cast<model::HighCompResult>(tasks[i]));
             }
 
@@ -490,12 +508,15 @@ namespace services {
             queueManager->off_total.erase(dnnToPrune->getDnnId());
             queueManager->off_high.erase(dnnToPrune->getDnnId());
 
+            std::cout << "HALTING DNN: " << dnnToPrune->getDnnId() << std::endl;
+
             std::shared_ptr<model::HaltNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::HaltNetworkCommsModel>(
                     enums::network_comms_types::halt_req,
                     std::chrono::system_clock::now(), sourceDevice->getHostName(), dnnToPrune->getDnnId(),
                     versionToPrune);
 
-            queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
+            services::haltReq(std::static_pointer_cast<model::BaseNetworkCommsModel>(baseNetworkCommsModel),
+                              queueManager->logManager);
 
             network_lock.unlock();
             offload_lock.unlock();
@@ -515,7 +536,6 @@ namespace services {
         catch (std::exception &e) {
             std::cout << "WorkQueueManager, Halt: Crash" << e.what() << std::endl;
         }
-        queueManager->decrementThreadCounter();
     }
 
     void WorkQueueManager::add_task(std::shared_ptr<model::WorkItem> item) {
@@ -523,27 +543,27 @@ namespace services {
         std::unique_lock<std::mutex> lk(WorkQueueManager::work_queue_lock, std::defer_lock);
         lk.lock();
         WorkQueueManager::logManager->add_log(enums::LogTypeEnum::ADD_WORK_TASK, log);
-        WorkQueueManager::work_queue.push_back(item);
+        std::vector<std::shared_ptr<model::WorkItem>> new_work_list;
+        new_work_list.push_back(item);
 
-        std::sort(WorkQueueManager::work_queue.begin(), WorkQueueManager::work_queue.end(),
-                  [](std::shared_ptr<model::WorkItem> a, std::shared_ptr<model::WorkItem> b) {
+        bool low_task = false;
 
-                      if (a->getRequestType() == b->getRequestType()) {
-                          if (a->getRequestType() == enums::request_type::low_complexity) {
-                              auto a_cast = std::static_pointer_cast<model::LowProcessingItem>(a);
-                              auto b_cast = std::static_pointer_cast<model::LowProcessingItem>(b);
+        for(const auto& work_item: WorkQueueManager::work_queue)
+            new_work_list.push_back(work_item);
 
-                              return a_cast->getDeadline() < b_cast->getDeadline();
-                          } else if (a->getRequestType() == enums::request_type::high_complexity) {
-                              auto a_cast = std::static_pointer_cast<model::HighProcessingItem>(a);
-                              auto b_cast = std::static_pointer_cast<model::HighProcessingItem>(b);
+        int n = static_cast<int>(new_work_list.size());
+        for (int i = 0; i < n - 1; ++i) {
+            for (int j = 0; j < n - i - 1; ++j) {
+                if (!utils::compare_work_items(new_work_list[j], new_work_list[j + 1])) {
+                    std::shared_ptr<model::WorkItem> a = new_work_list[j];
+                    new_work_list[j] = new_work_list[j + 1];
+                    new_work_list[j + 1] = a;
+                }
+            }
+        }
 
-                              return a_cast->getDeadline() < b_cast->getDeadline();
-                          }
-                          return true;
-                      } else
-                          return a->getRequestType() < b->getRequestType();
-                  });
+        WorkQueueManager::work_queue = new_work_list;
+
         lk.unlock();
     }
 
@@ -551,73 +571,43 @@ namespace services {
         try {
             std::unique_lock<std::mutex> lk(queueManager->work_queue_lock, std::defer_lock);
             while (true) {
-                queueManager->current_task.clear();
-                queueManager->thread_counter = 0;
 
                 if (!queueManager->work_queue.empty()) {
                     lk.lock();
 
-                    queueManager->thread_counter++;
-                    queueManager->current_task.push_back(queueManager->work_queue.front());
+                    auto current_task = queueManager->work_queue.front();
 
                     queueManager->work_queue.erase(queueManager->work_queue.begin());
 
                     lk.unlock();
 
-                    std::vector<std::thread> thread_pool;
-                    switch (queueManager->current_task.front()->getRequestType()) {
+                    switch (current_task->getRequestType()) {
                         case enums::request_type::low_complexity:
-                            thread_pool.emplace_back(low_comp_allocation_call, queueManager->current_task.front(),
-                                                     queueManager);
-                            break;
+                            low_comp_allocation_call(current_task, queueManager);
                         case enums::request_type::high_complexity:
-                            thread_pool.emplace_back(add_high_comp_work_item, queueManager->current_task.front(),
-                                                     queueManager);
+                            add_high_comp_work_item(current_task, queueManager);
                             break;
                         case enums::request_type::halt_req:
-                            thread_pool.emplace_back(halt_call, queueManager->current_task.front(), queueManager);
+                            halt_call(current_task, queueManager);
+                            break;
+                        case enums::request_type::return_task:
+                            state_update_call(current_task, queueManager);
                             break;
                         case enums::request_type::state_update:
-                            thread_pool.emplace_back(state_update_call, queueManager->current_task.front(),
-                                                     queueManager);
+                            state_update_call(current_task, queueManager);
+                            break;
+                        case enums::request_type::work_request:
+                            high_comp_allocation_call(current_task, queueManager);
                             break;
                     }
-                    thread_pool.back().detach();
-                    /* We wait for the current work items to terminate */
-                    while (queueManager->thread_counter > 0) {
-                        lk.lock();
-                        if (!queueManager->work_queue.empty() && queueManager->current_task.front()->getRequestType() ==
-                                                                 enums::request_type::low_complexity &&
-                            queueManager->work_queue.front()->getRequestType() ==
-                            enums::request_type::low_complexity) {
-                            /* If more low complexity tasks are added to the queue then we append them to the current
-                             * work list */
-                            while (!queueManager->work_queue.empty() &&
-                                   queueManager->work_queue.front()->getRequestType() ==
-                                   enums::request_type::low_complexity) {
-                                queueManager->thread_counter++;
-                                thread_pool.emplace_back(low_comp_allocation_call, queueManager->work_queue.front(),
-                                                         queueManager);
-                                thread_pool.back().detach();
-                                queueManager->current_task.push_back(queueManager->work_queue.front());
-                                queueManager->work_queue.erase(queueManager->work_queue.begin());
-                            }
-                        }
-                        lk.unlock();
-                    }
-                    thread_pool.clear();
                 }
             }
 
         }
         catch (std::exception &e) {
-            std::cerr << "WORK_QUEUE_MANAGER: something wrong has happened! ;)" << '\n';
-            std::cerr << e.what() << "\n";
+            std::cout << "WORK_QUEUE_MANAGER: something wrong has happened! ;)" << '\n';
+            std::cout << e.what() << "\n";
         }
-    }
-
-    void WorkQueueManager::decrementThreadCounter() {
-        WorkQueueManager::thread_counter--;
     }
 
     double WorkQueueManager::getAverageBitsPerSecond() const {
@@ -637,11 +627,9 @@ namespace services {
     }
 
     WorkQueueManager::WorkQueueManager(std::shared_ptr<LogManager>
-                                       ptr, std::shared_ptr<NetworkQueueManager>
-                                       sharedPtr)
+                                       ptr)
             : logManager(std::move(ptr)) {
         WorkQueueManager::network = std::make_shared<model::Network>();
-        WorkQueueManager::networkQueueManager = sharedPtr;
 
     }
 
@@ -661,6 +649,219 @@ namespace services {
     void WorkQueueManager::setWorkStealingQueue(
             const std::vector<std::shared_ptr<model::HighProcessingItem>> &workStealingQueue) {
         work_stealing_queue = workStealingQueue;
+    }
+
+    void
+    highTaskAllocation(const std::shared_ptr<model::BaseNetworkCommsModel> &comm_model,
+                       std::shared_ptr<services::LogManager> logManager) {
+        bool failed = true;
+
+        // Create a pointer to a bool
+        bool *boolPtr = &failed;
+
+        auto highCompComm = std::static_pointer_cast<model::HighComplexityAllocationComms>(comm_model);
+        std::string baseURI = "http://" + highCompComm->getHost() + ":" + std::string(HIGH_CLIENT_PORT);
+
+        std::string hostName = highCompComm->getHost();
+
+        json::value output;
+        web::json::value log;
+
+        log["request_counter"] = web::json::value::number(highCompComm->getRequestCounter());
+        log["comm_time"] = web::json::value::number(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        comm_model->getCommTime().time_since_epoch()).count());
+
+        log["success"] = web::json::value::boolean(highCompComm->isSuccess());
+
+        output["success"] = web::json::value::boolean(highCompComm->isSuccess());
+        output["request_counter"] = web::json::value::number(highCompComm->getRequestCounter());
+        json::value dnn;
+
+        if (highCompComm->isSuccess()) {
+            std::shared_ptr<model::HighCompResult> br = highCompComm->getAllocatedTask();
+            bool is_source_allocation = br->getSrcHost() == br->getAllocatedHost();
+
+            log["dnn"] = web::json::value(br->convertToJson());
+            dnn["source_host"] = web::json::value::string(br->getSrcHost());
+            dnn["allocated_host"] = web::json::value::string(
+                    is_source_allocation ? "self" : br->getAllocatedHost());
+            dnn["start_time"] = web::json::value::number(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                            br->getEstimatedStart().time_since_epoch()).count());
+            dnn["finish_time"] = web::json::value::number(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                            br->getEstimatedFinish().time_since_epoch()).count());
+            dnn["dnn_id"] = web::json::value::string(br->getDnnId());
+            dnn["N"] = web::json::value::number(br->getN());
+            dnn["M"] = web::json::value::number(br->getM());
+            dnn["version"] = web::json::value::number(br->getVersion());
+            output["dnn"] = dnn;
+
+        }
+        logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_ALLOCATION_HIGH, log);
+
+        int counter = 0;
+
+        bool continue_process = false;
+        bool *continue_process_ptr = &continue_process;
+
+        auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
+        output["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
+        while (failed) {
+
+            std::chrono::time_point<std::chrono::system_clock> comm_start = std::chrono::system_clock::now();
+
+            std::cout << "HIGH_COMP_ALLOCATION: " << baseURI << "/" << std::string(HIGH_TASK_ALLOCATION)
+                      << " COUNTER - " << highCompComm->getRequestCounter()
+                      << " ATTEMPT: " << counter << std::endl;
+
+            counter++;
+
+            std::string success_str =
+                    "HIGH_COMP_ALLOCATION: " + baseURI + "/" + std::string(HIGH_TASK_ALLOCATION) + " COUNTER - "
+                    + std::to_string(highCompComm->getRequestCounter()) + " SUCCESS!";
+            try {
+
+                http::client::http_client(baseURI).request(
+                        http::methods::POST,
+                        "/" +
+                        std::string(HIGH_TASK_ALLOCATION),
+                        output.serialize()).then([continue_process_ptr, success_str](const web::http::http_response &) {
+                    *continue_process_ptr = true;
+                    std::cout << success_str << std::endl;
+                }).wait();
+
+                while (!continue_process);
+                failed = false;
+
+            }
+            catch (const std::exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: HIGH TASK SYSTEM_CRASH" << std::endl;
+                std::cout << e.what() << std::endl;
+            }
+            catch (const http::http_exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: HIGH TASK SYSTEM_CRASH" << std::endl;
+                std::cout << e.what() << std::endl;
+            }
+        }
+    }
+
+    void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                 std::shared_ptr<services::LogManager> logManager) {
+        bool failed = true;
+
+        // Create a pointer to a bool
+        bool *boolPtr = &failed;
+
+        auto haltCommModel = static_pointer_cast<model::HaltNetworkCommsModel>(comm_model);
+
+        web::json::value result;
+
+        web::json::value log;
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count() * 1000);
+        logManager->add_log(enums::LogTypeEnum::OUTBOUND_HALT_REQUEST, log);
+
+        result["dnn_id"] = web::json::value::string(haltCommModel->getDnnId());
+        result["version"] = web::json::value::number(haltCommModel->getVersionNumber());
+
+        bool continue_proccess = false;
+        bool *continue_process_ptr = &continue_proccess;
+
+        auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
+        result["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
+        while (failed) {
+            try {
+                web::http::client::http_client(
+                        "http://" + haltCommModel->getHostToContact() + ":" + std::string(HIGH_CLIENT_PORT)).request(
+                        web::http::methods::POST,
+                        "/" +
+                        std::string(HALT_ENDPOINT),
+                        result.serialize()).then([continue_process_ptr](web::http::http_response response) {
+                    *continue_process_ptr = true;
+                    std::cout << "HALT REQ: SUCCESS" << std::endl;
+                }).wait();
+
+                while (!continue_proccess);
+                failed = false;
+
+            }
+            catch (const std::exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: Halt Error exception: " << e.what() << std::endl;
+            }
+            catch (const http::http_exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: Halt Error exception: " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void
+    lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                      std::shared_ptr<services::LogManager> logManager) {
+
+        bool failed = true;
+
+        // Create a pointer to a bool
+        bool *boolPtr = &failed;
+        auto lowCompComm = static_pointer_cast<model::LowComplexityAllocationComms>(comm_model);
+        auto task_res = lowCompComm->getAllocatedTask();
+        std::string host = lowCompComm->getHost();
+
+        json::value result;
+        result["dnn_id"] = json::value::string(task_res->getDnnId());
+        result["start_time"] = json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                task_res->getEstimatedStart().time_since_epoch()).count());
+        result["finish_time"] = json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                task_res->getEstimatedFinish().time_since_epoch()).count());
+
+        web::json::value log;
+        log["dnn"] = web::json::value(task_res->convertToJson());
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comm_model->getCommTime().time_since_epoch()).count());
+        log["estimated_start"] = web::json::value::string(
+                utils::debugTimePointToString(task_res->getEstimatedStart()));
+        log["estimated_finish"] = web::json::value::string(
+                utils::debugTimePointToString(task_res->getEstimatedFinish()));
+        logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
+
+
+        bool continue_process = false;
+        bool *continue_process_ptr = &continue_process;
+        int counter = 0;
+
+        auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
+
+
+        auto high_task_item = web::json::value();
+        high_task_item["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
+        high_task_item["low_comp_id"] = web::json::value::string(task_res->getDnnId());
+
+        while (failed) {
+            try {
+                std::cout << "LOW_COMP_ALLOCATION: " << host << "/" << std::string(LOW_TASK_ALLOCATION)
+                          << " ATTEMPT: " << counter << std::endl;
+
+                counter++;
+
+                web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(
+                        web::http::methods::POST,
+                        "/" + std::string(LOW_TASK_ALLOCATION), result.serialize()).then(
+                        [continue_process_ptr](const web::http::http_response &) {
+                            *continue_process_ptr = true;
+                        }).wait();
+
+                while (!continue_process);
+                failed = false;
+            }
+            catch (const std::exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: LOW_COMP SYSTEM CRASH" << std::endl;
+            }
+            catch (const http::http_exception &e) {
+                std::cout << "NETWORK_QUEUE_MANAGER: LOW COMP SYSTEM_CRASH" << std::endl;
+            }
+        }
+
     }
 
 } // services

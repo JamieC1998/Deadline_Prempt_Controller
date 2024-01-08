@@ -179,5 +179,13 @@ namespace model {
         uniqueDnnIdCounter++;
     }
 
+    BaseCompResult::BaseCompResult(std::string dnnId, std::string srcHost,
+                                   const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                                   enums::dnn_type dnnType, int core_allocation) : dnn_id(dnnId), srcHost(srcHost),
+                                                                                   deadline(deadline), dnnType(dnnType),
+                                                                                   core_allocation(core_allocation), uniqueDnnId(uniqueDnnIdCounter) {
+        uniqueDnnIdCounter++;
+    }
+
 
 } // model

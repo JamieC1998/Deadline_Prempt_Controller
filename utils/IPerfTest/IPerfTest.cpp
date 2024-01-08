@@ -30,10 +30,8 @@ namespace utils {
 
                     iperf_defaults(test);
                     iperf_set_test_role(test, 'c');
-                    char *ccx = new char[host.length() + 1];
-                    std::copy(host.begin(), host.end(), ccx);
 
-                    iperf_set_test_server_hostname(test, ccx);
+                    iperf_set_test_server_hostname(test, host.c_str());
                     iperf_set_test_server_port(test, atoi(IPERF_PORT));
 
                     iperf_set_test_omit(test, 3);
@@ -46,7 +44,6 @@ namespace utils {
                         fprintf(stderr, "error - %s\n", iperf_strerror(i_errno));
                         iperf_free_test(test);
                         continue;
-//                    exit(EXIT_FAILURE);
                     }
 
                     auto bimp = iperf_get_test_json_output_string(test);

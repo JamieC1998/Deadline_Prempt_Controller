@@ -25,7 +25,14 @@ private:
     services::WorkQueueManager *workQueueManager;
     std::shared_ptr<services::LogManager> logManager;
 
+    std::vector<std::string> high_allocate_req_id;
+    std::vector<std::string> high_work_req_id;
+    std::vector<std::string> low_allocate_req_id;
+    std::vector<std::string> state_update_req_id;
+    std::vector<std::string> deadline_violated_req_id;
+
 };
 
+static void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<services::LogManager> logManager);
 
 #endif //CONTROLLER_MASTERCONTROLLER_H

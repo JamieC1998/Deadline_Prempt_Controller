@@ -36,10 +36,15 @@ namespace model {
 
         web::json::value convertToJson();
 
+        const std::string &getLastLowCompId() const;
+
+        void setLastLowCompId(const std::string &lastLowCompId);
+
     private:
         int id;
         int cores;
         std::string host_name;
+        std::string last_low_comp_id = "N/A";
     };
 
 } // model

@@ -6,7 +6,7 @@
 #define CONTROLLER_LOG_CONSTANT_H
 
 namespace constants {
-#define RESULTS_FILE_NAME std::string("worksteal_preemption_weighted_2.json")
+#define RESULTS_FILE_NAME std::string("weighted_4_worksteal_preempt.json")
 #define RESULTS_FILE std::string("/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/") + RESULTS_FILE_NAME
 }
 

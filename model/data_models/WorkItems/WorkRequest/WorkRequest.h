@@ -11,17 +11,16 @@ namespace model {
 
     class WorkRequest: public WorkItem{
     public:
-        WorkRequest(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
-                    int capacity);
+        WorkRequest(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType, int reqCounter, std::chrono::time_point<std::chrono::system_clock> tp);
 
-        int getCapacity() const;
+        int getRequestCounter() const;
 
-        void setCapacity(int capacity);
+        const std::chrono::time_point<std::chrono::system_clock> &getCreation() const;
 
     private:
-        int capacity = 0;
+        int request_counter = -1;
+        std::chrono::time_point<std::chrono::system_clock> creation;
     };
-
 } // model
 
 #endif //CONTROLLER_WORKREQUEST_H

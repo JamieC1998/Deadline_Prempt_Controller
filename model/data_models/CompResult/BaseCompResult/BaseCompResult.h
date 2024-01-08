@@ -39,6 +39,10 @@ namespace model {
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        enums::dnn_type dnnType);
 
+        BaseCompResult(std::string dnnId, std::string srcHost,
+                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
+                       enums::dnn_type dnnType, int core_allocation);
+
         int getUniqueDnnId() const;
 
         const std::string &getDnnId() const;
@@ -86,7 +90,7 @@ namespace model {
         void setStateUpdate(const std::shared_ptr<LinkAct> &stateUpdate);
 
     private:
-        int uniqueDnnId;
+        int uniqueDnnId{};
         std::string dnn_id;
         std::string allocated_host;
         std::string srcHost;

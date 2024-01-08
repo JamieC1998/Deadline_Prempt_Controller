@@ -10,19 +10,19 @@ namespace model {
     HighComplexityAllocationComms::HighComplexityAllocationComms(enums::network_comms_types type,
                                                                  const std::chrono::time_point<std::chrono::system_clock> &commTime,
                                                                  std::shared_ptr<HighCompResult> allocatedTask,
-                                                                 std::string host, bool isSuccess)
+                                                                 std::string host, bool isSuccess, int reqCounter)
             : BaseNetworkCommsModel(type,
                                     commTime),
               allocatedTask(std::move(
                       allocatedTask)),
               host(std::move(host)),
-              success(isSuccess) {}
+              success(isSuccess), request_counter(reqCounter) {}
 
 
     HighComplexityAllocationComms::HighComplexityAllocationComms(enums::network_comms_types type,
                                                                  const std::chrono::time_point<std::chrono::system_clock> &commTime,
-                                                                 bool isSuccess, std::string host)
-            : BaseNetworkCommsModel(type, commTime), success(isSuccess), host(host) {
+                                                                 bool isSuccess, std::string host, int reqCounter)
+            : BaseNetworkCommsModel(type, commTime), success(isSuccess), host(host), request_counter(reqCounter) {
 
     }
 
@@ -44,6 +44,10 @@ namespace model {
 
     bool HighComplexityAllocationComms::isSuccess() const {
         return success;
+    }
+
+    int HighComplexityAllocationComms::getRequestCounter() const {
+        return request_counter;
     }
 
 } // model

@@ -7,13 +7,14 @@
 
 namespace constant {
 
-#define REQ_TYPE_STATE_UPDATE 1
-#define PRUNE_DNN 2
-#define HALT_REQ 3
-#define DAG_DISRUPTION 4
-#define LOW_COMPLEXITY 5
-#define HIGH_COMPLEXITY 6
-#define HIGH_WORK_REQUEST 7
+#define SILENT_TASK_REMOVE 1
+#define REQ_TYPE_STATE_UPDATE 2
+#define PRUNE_DNN 3
+#define HALT_REQ 4
+#define DAG_DISRUPTION 5
+#define LOW_COMPLEXITY 6
+#define HIGH_COMPLEXITY 7
+#define HIGH_WORK_REQUEST 8
 
 }
 #endif //CONTROLLER_REQUESTTYPES_H
