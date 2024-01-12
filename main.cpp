@@ -44,7 +44,9 @@ int main() {
         listener.open().wait();
         std::cout << "Listening for requests at: " << listener.uri().to_string() << std::endl;
 
-        auto work_thread = std::thread(services::WorkQueueManager::main_loop, workQueueManager);
+        std::thread work_thread = std::thread([workQueueManager](){
+            workQueueManager->main_loop();
+        });
         work_thread.detach();
 
         while (true);

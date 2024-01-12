@@ -26,7 +26,7 @@ namespace services {
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
-        [[noreturn]] static void main_loop(WorkQueueManager* queueManager);
+        [[noreturn]] void main_loop();
 
         std::mutex work_queue_lock;
         std::mutex network_lock = std::mutex();
@@ -46,31 +46,31 @@ namespace services {
         uint64_t state_size = 0;
 
         std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
-        std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
-        std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
-        std::shared_ptr<services::LogManager> logManager;
 
         const std::vector<std::shared_ptr<model::HighProcessingItem>> &getWorkStealingQueue() const;
 
         void setWorkStealingQueue(const std::vector<std::shared_ptr<model::HighProcessingItem>> &workStealingQueue);
+
+        void state_update_call(std::shared_ptr<model::WorkItem> workItem);
+
+        void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem);
+
+        void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem);
+
+        void halt_call(std::shared_ptr<model::WorkItem> workItem);
+
+        void add_high_comp_work_item(std::shared_ptr<model::WorkItem> item);
 
     private:
         std::vector<std::shared_ptr<model::WorkItem>> work_queue;
         double average_bits_per_second = 0.0;
         double jitter = 0.0;
 
+        std::shared_ptr<services::LogManager> logManager;
         std::vector<std::shared_ptr<model::HighProcessingItem>> work_stealing_queue;
     };
 
-    void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    void add_high_comp_work_item(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager);
 
     void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::LogManager> logManager);
 

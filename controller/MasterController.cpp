@@ -108,8 +108,6 @@ void MasterController::handle_post(const http_request &message) {
                     log["request_counter"] = web::json::value::number(request_counter);
 
                     MasterController::logManager->add_log(enums::LogTypeEnum::WORK_REQUEST, log);
-//                auto x = std::thread(services::high_comp_allocation_call, workRequestItem, workQueueManager);
-//                x.detach();
 
                     MasterController::workQueueManager->add_task(workRequestItem);
                     MasterController::high_work_req_id.push_back(message.remote_address() + "_" + request_id);
