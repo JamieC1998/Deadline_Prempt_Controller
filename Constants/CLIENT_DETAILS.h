@@ -15,11 +15,12 @@ namespace constant{
 #define TASK_UPDATE "update_task"
 #define RAISE_CAP "raise_cap"
 
-#define LOW_COMP_PORT "9028"
+#define LOW_COMP_PORT "6501"
 
 /* ENDPOINTS FOR EXPERIMENT MANAGER */
 #define LOW_TASK_ALLOCATION "allocate_low_task"
-#define SET_EXPERIMENT_START "experiment_start"
+#define EXPERIMENT_START "experiment_start"
+#define SET_EXPERIMENT_START "set_experiment_start"
 
 
 #define CLIENT_COUNT 4

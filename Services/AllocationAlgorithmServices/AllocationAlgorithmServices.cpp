@@ -10,8 +10,8 @@ namespace services {
 
         int core_usage = 0;
         for (auto &task: device->DNNS)
-            /* If we are at the end of the task list */
-            core_usage += task->getCoreAllocation();
+            if(task->getEstimatedFinish() >= std::chrono::system_clock::now() && task->getDnnType() != enums::dnn_type::low_comp)
+                core_usage += task->getCoreAllocation();
 
         return checkCapacity(core_usage + 1, device);
     }

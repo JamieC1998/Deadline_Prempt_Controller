@@ -7,22 +7,22 @@
 #include "controller/MasterController.h"
 #include "Constants/CLIENT_DETAILS.h"
 
-void unhandledExceptionCallback() {
-    try {
-        throw; // Re-throw the exception to obtain exception information
-    } catch (const std::exception &e) {
-        std::cout << "Unhandled exception caught: " << e.what() << std::endl;
-        std::cout << e.what() << std::endl;
-    } catch (const web::http::http_exception &e) {
-        std::cout << "Unhandled unknown exception caught" << std::endl;
-        std::cout << e.what() << std::endl;
-    }
-
-    std::abort(); // Terminate the program
-}
+//void unhandledExceptionCallback() {
+//    try {
+//        throw; // Re-throw the exception to obtain exception information
+//    } catch (const std::exception &e) {
+//        std::cout << "Unhandled exception caught: " << e.what() << std::endl;
+//        std::cout << e.what() << std::endl;
+//    } catch (const web::http::http_exception &e) {
+//        std::cout << "Unhandled unknown exception caught" << std::endl;
+//        std::cout << e.what() << std::endl;
+//    }
+//
+//    std::abort(); // Terminate the program
+//}
 
 int main() {
-    std::set_terminate(unhandledExceptionCallback);
+//    std::set_terminate(unhandledExceptionCallback);
 
     try {
         std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();

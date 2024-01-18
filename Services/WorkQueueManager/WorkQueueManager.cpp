@@ -238,9 +238,8 @@ namespace services {
         try {
             auto currentTime = std::chrono::system_clock::now();
             auto highProcessingItem = std::static_pointer_cast<model::HighProcessingItem>(item);
-            auto work_stealing_queue = WorkQueueManager::getWorkStealingQueue();
-            work_stealing_queue.push_back(highProcessingItem);
-            std::sort(work_stealing_queue.begin(), work_stealing_queue.end(),
+            WorkQueueManager::work_stealing_queue.push_back(highProcessingItem);
+            std::sort(WorkQueueManager::work_stealing_queue.begin(), WorkQueueManager::work_stealing_queue.end(),
                       [](std::shared_ptr<model::HighProcessingItem> a, std::shared_ptr<model::HighProcessingItem> b) {
                           return a->getDeadline() < b->getDeadline();
                       });
@@ -252,7 +251,7 @@ namespace services {
 
             std::vector<std::shared_ptr<model::HighProcessingItem>> newList;
 
-            for (const auto &task: work_stealing_queue) {
+            for (const auto &task: WorkQueueManager::work_stealing_queue) {
                 if (ftp_high_processing_window < task->getDeadline())
                     newList.push_back(task);
                 else {
@@ -277,8 +276,10 @@ namespace services {
 
         int cap = 0;
 
-        for (const auto DNN: device->DNNS)
-            cap += DNN->getCoreAllocation();
+        for (const auto DNN: device->DNNS) {
+            if (DNN->getEstimatedFinish() >= std::chrono::system_clock::now())
+                cap += DNN->getCoreAllocation();
+        }
 
         return cap;
     }
@@ -288,10 +289,14 @@ namespace services {
             auto workRequest = std::static_pointer_cast<model::WorkRequest>(item);
 
             int request_counter = workRequest->getRequestCounter();
+            int capacity = workRequest->getCapacity();
 
             std::string sourceHost = (*item->getHostList())[0];
             int device_capacity =
                     MAX_CORE_ALLOWANCE - gather_local_capacity_now(WorkQueueManager::network->devices[sourceHost]);
+
+//            int device_capacity =
+//                    MAX_CORE_ALLOWANCE - capacity;
 
             auto currentTime = std::chrono::system_clock::now();
 
@@ -360,6 +365,8 @@ namespace services {
 
             if (CURRENT_M != TASK_NOT_FOUND) {
                 work_queue.erase(work_queue.begin() + index);
+                auto id = selectedTask->getDnnId();
+
                 std::shared_ptr<model::HighCompResult> task = std::make_shared<model::HighCompResult>(
                         selectedTask->getDnnId(),
                         (*selectedTask->getHostList())[0],
@@ -436,7 +443,8 @@ namespace services {
             haltCandidates.reserve(tasks.size());
 
             for (int i = 0; i < tasks.size(); i++) {
-                if (tasks[i]->getDnnType() != enums::dnn_type::low_comp)
+                if (tasks[i]->getDnnType() != enums::dnn_type::low_comp &&
+                    tasks[i]->getEstimatedFinish() >= std::chrono::system_clock::now())
                     haltCandidates.emplace_back(i, std::static_pointer_cast<model::HighCompResult>(tasks[i]));
             }
 
@@ -561,6 +569,7 @@ namespace services {
                     switch (current_task->getRequestType()) {
                         case enums::request_type::low_complexity:
                             WorkQueueManager::low_comp_allocation_call(current_task);
+                            break;
                         case enums::request_type::high_complexity:
                             WorkQueueManager::add_high_comp_work_item(current_task);
                             break;
@@ -685,8 +694,17 @@ namespace services {
             bool *continue_process_ptr = &continue_process;
             bool *failed_ptr = &failed;
 
+            // Use a fixed seed for reproducibility (change the seed value as needed)
+            std::mt19937 gen(42);
+
+            // Define a distribution (e.g., uniform distribution between 1 and 100)
+            std::uniform_int_distribution<> distribution(1, 100);
+
+            // Generate a random number
+            auto random_number = std::to_string(distribution(gen));
+
             auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
-            output["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
+            output["request_version"] = web::json::value::string(std::to_string(time_since_epoch) + random_number);
             while (failed) {
                 failed = true;
                 continue_process = false;
@@ -704,12 +722,13 @@ namespace services {
                         + std::to_string(highCompComm->getRequestCounter()) + " SUCCESS!";
                 try {
 
+                    web::http::http_request request(web::http::methods::POST);
+                    request.headers().set_content_type(U("application/json"));
+                    request.set_body(output);
+
                     failed = false;
-                    http::client::http_client(baseURI).request(
-                            http::methods::POST,
-                            "/" +
-                            std::string(HIGH_TASK_ALLOCATION),
-                            output.serialize()).then(
+                    http::client::http_client(baseURI + "/" + std::string(HIGH_TASK_ALLOCATION)).request(
+                            request).then(
                             [continue_process_ptr, success_str, failed_ptr](const web::http::http_response res) {
                                 if (res.status_code() != http::status_codes::OK)
                                     *failed_ptr = true;
@@ -761,17 +780,30 @@ namespace services {
             bool *continue_process_ptr = &continue_proccess;
 
             auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
-            result["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
+
+            // Use a fixed seed for reproducibility (change the seed value as needed)
+            std::mt19937 gen(42);
+
+            // Define a distribution (e.g., uniform distribution between 1 and 100)
+            std::uniform_int_distribution<> distribution(1, 100);
+
+            // Generate a random number
+            auto random_number = std::to_string(distribution(gen));
+
+            result["request_version"] = web::json::value::string(std::to_string(time_since_epoch) + random_number);
             while (failed) {
                 try {
                     failed = false;
+
+                    web::http::http_request request(web::http::methods::POST);
+                    request.headers().set_content_type(U("application/json"));
+                    request.set_body(result);
+
                     web::http::client::http_client(
                             "http://" + haltCommModel->getHostToContact() + ":" +
-                            std::string(HIGH_CLIENT_PORT)).request(
-                            web::http::methods::POST,
-                            "/" +
-                            std::string(HALT_ENDPOINT),
-                            result.serialize()).then(
+                            std::string(HIGH_CLIENT_PORT) + "/" +
+                            std::string(HALT_ENDPOINT)).request(
+                            request).then(
                             [continue_process_ptr, failed_ptr](web::http::http_response response) {
                                 if (response.status_code() != http::status_codes::OK)
                                     *failed_ptr = true;
@@ -833,27 +865,38 @@ namespace services {
 
             auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch().count();
 
+            // Use a fixed seed for reproducibility (change the seed value as needed)
+            std::mt19937 gen(42);
 
-            auto high_task_item = web::json::value();
-            high_task_item["request_version"] = web::json::value::string(std::to_string(time_since_epoch));
-            high_task_item["low_comp_id"] = web::json::value::string(task_res->getDnnId());
+            // Define a distribution (e.g., uniform distribution between 1 and 100)
+            std::uniform_int_distribution<> distribution(1, 100);
 
-            auto success_str = std::string("LOW_COMP_ALLOCATION: ") + host + std::string("/") + std::string(LOW_TASK_ALLOCATION)
-                                         + std::string(" ATTEMPT: ");
+            // Generate a random number
+            auto random_number = std::to_string(distribution(gen));
+
+            result["request_version"] = web::json::value::string(
+                    std::to_string(time_since_epoch) + random_number);
+
+            auto success_str =
+                    std::string("LOW_COMP_ALLOCATION: ") + host + std::string("/") + std::string(LOW_TASK_ALLOCATION)
+                    + std::string(" ATTEMPT: ");
 
             while (failed) {
                 try {
                     std::cout << "LOW_COMP_ALLOCATION: " << host << "/" << std::string(LOW_TASK_ALLOCATION)
                               << " ATTEMPT: " << counter << std::endl;
 
-
+                    web::http::http_request request(web::http::methods::POST);
+                    request.headers().set_content_type(U("application/json"));
+                    request.set_body(result);
 
                     counter++;
                     failed = false;
-                    web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(
-                            web::http::methods::POST,
-                            "/" + std::string(LOW_TASK_ALLOCATION), result.serialize()).then(
-                            [continue_process_ptr, failed_ptr, success_str, counter](const web::http::http_response & response) {
+                    web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT) + "/" +
+                                                   std::string(LOW_TASK_ALLOCATION)).request(
+                            request).then(
+                            [continue_process_ptr, failed_ptr, success_str, counter](
+                                    const web::http::http_response &response) {
                                 *continue_process_ptr = true;
 
                                 if (response.status_code() != http::status_codes::OK)

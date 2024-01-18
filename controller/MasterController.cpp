@@ -48,13 +48,12 @@ void MasterController::handle_post(const http_request &message) {
 
     try {
         if (!path.empty()) {
+            message.reply(status_codes::OK);
+
             std::cout << "REQUEST_RECEIVED" << std::endl;
             if (path == LOG_RESULT) {
                 std::string result = MasterController::logManager->write_log();
-                message.reply(status_codes::OK, result).wait();
             } else if (path == RETURN_TASK) {
-                message.reply(status_codes::OK);
-
                 auto source_host = body["source_host"].as_string();
                 auto dnn_id = body["dnn_id"].as_string();
                 std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
@@ -78,7 +77,6 @@ void MasterController::handle_post(const http_request &message) {
                 workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(highProcessingItem));
 
             } else if (path == HIGH_WORK_REQUEST) {
-                message.reply(status_codes::OK);
 
                 enums::request_type requestType = enums::request_type::work_request;
 
@@ -89,6 +87,7 @@ void MasterController::handle_post(const http_request &message) {
 
                 int request_counter = body["request_counter"].as_integer();
                 auto request_id = body["request_id"].as_string();
+                int capacity = body["capacity"].as_integer();
 
                 // Use std::find to check if the string is in the vector
                 auto it = std::find(MasterController::high_work_req_id.begin(),
@@ -100,6 +99,7 @@ void MasterController::handle_post(const http_request &message) {
 
                     std::shared_ptr<model::WorkRequest> workRequestItem = std::make_shared<model::WorkRequest>(hostList,
                                                                                                                requestType,
+                                                                                                               capacity,
                                                                                                                request_counter,
                                                                                                                std::chrono::system_clock::now());
 
@@ -116,7 +116,6 @@ void MasterController::handle_post(const http_request &message) {
                 }
 
             } else if (path == HIGH_OFFLOAD_REQUEST) {
-                message.reply(status_codes::OK);
                 enums::request_type requestType = enums::request_type::high_complexity;
                 uint64_t deadline_ms = body["deadline"].as_number().to_uint64();
                 auto request_id = body["request_id"].as_string();
@@ -144,6 +143,9 @@ void MasterController::handle_post(const http_request &message) {
                                 requestType,
                                 deadline,
                                 dnn_id + "_" + std::to_string(i));
+
+                        auto id = highProcessingItem->getDnnId();
+
                         workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(highProcessingItem));
                     }
 
@@ -199,10 +201,6 @@ void MasterController::handle_post(const http_request &message) {
                     std::cout << "DUPLICATE LOW OFFLOAD REQUEST FROM: " << message.remote_address() << std::endl;
                 }
 
-                http_response response;
-                response.set_status_code(status_codes::Created);
-                message.reply(response);
-
             } else if (path == DEVICE_REGISTER_REQUEST) {
                 dev_list->register_device(message.remote_address());
                 std::shared_ptr<model::ComputationDevice> computationDevice = std::make_shared<model::ComputationDevice>(
@@ -210,7 +208,6 @@ void MasterController::handle_post(const http_request &message) {
                 workQueueManager->network->devices[message.remote_address()] = computationDevice;
                 web::json::value response;
                 response["host_name"] = json::value::string(message.remote_address());
-                message.reply(status_codes::Created, response);
 
                 web::json::value log;
                 log["host"] = web::json::value::string(message.remote_address());
@@ -231,7 +228,6 @@ void MasterController::handle_post(const http_request &message) {
                 }
 
             } else if (path == STATE_UPDATE) {
-                message.reply(status_codes::OK);
                 std::string body_dump = body.serialize();
                 std::cout << body_dump << std::endl;
                 std::string host = message.remote_address();
@@ -270,7 +266,6 @@ void MasterController::handle_post(const http_request &message) {
                     std::cout << "DUPLICATE STATE UPDATE REQUEST FROM: " << message.remote_address() << std::endl;
                 }
             } else if (path == DEADLINE_VIOLATED) {
-                message.reply(status_codes::OK);
                 std::string body_dump = body.serialize();
                 std::cout << body_dump << std::endl;
                 std::string host = message.remote_address();
@@ -348,24 +343,44 @@ void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<servi
     // Use the seed to initialize the random number engine
     std::mt19937 gen(rd());
     std::uniform_int_distribution<uint64_t> distribution(0, stop_range);
+
     for (const auto &hostName: hosts) {
-        uint64_t variance = distribution(gen);
-        variance = 0;
+        try {
+            uint64_t variance = distribution(gen);
+            variance = 0;
+
+            web::http::http_request request(web::http::methods::POST);
+            request.headers().set_content_type(U("application/json"));
+            request.set_body(result);
 //            result["start_time"] = web::json::value::number(millis + variance);
 
-        auto client = http::client::http_client("http://" + hostName + ":" + std::string(LOW_COMP_PORT)).request(
-                http::methods::POST,
-                U("/" + std::string(SET_EXPERIMENT_START)),
-                result.serialize());
+            auto client = http::client::http_client("http://" + hostName + ":" + std::string(LOW_COMP_PORT) +
+                                                    U("/" + std::string(SET_EXPERIMENT_START))).request(
+                    request);
 
 
-        client.wait();
+            client.wait();
+        }
+        catch (std::exception e) {
+            std::cout << e.what() << std::endl;
+        }
+        catch (std::logic_error e) {
+            std::cout << e.what() << std::endl;
+        }
     }
     for (const auto &hostName: hosts) {
-        auto client = http::client::http_client("http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT)).request(
-                http::methods::GET,
-                U("/" + std::string(SET_EXPERIMENT_START)));
-        client.wait();
+        try {
+            auto client = http::client::http_client("http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT)).request(
+                    http::methods::GET,
+                    U("/" + std::string(EXPERIMENT_START)));
+            client.wait();
+        }
+        catch (std::exception e) {
+            std::cout << e.what() << std::endl;
+        }
+        catch (std::logic_error e) {
+            std::cout << e.what() << std::endl;
+        }
     }
 }
 
