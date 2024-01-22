@@ -39,7 +39,8 @@ namespace services {
 
             auto dnn = WorkQueueManager::off_total[dnn_id];
 
-            std::string allocated_device = dnn->getAllocatedHost();
+            std::string allocated_device = (dnn->getDnnType() == enums::dnn_type::high_comp) ? dnn->getAllocatedHost()
+                                                                                             : dnn->getSrcHost();
 
             WorkQueueManager::network->devices[allocated_device]->DNNS.erase(
                     std::remove_if(WorkQueueManager::network->devices[allocated_device]->DNNS.begin(),
@@ -51,25 +52,6 @@ namespace services {
 
             /* Begin iterating through the DNN to gather tasks and links to remove */
             std::vector<std::shared_ptr<model::LinkAct>> links_to_prune;
-
-            if (dnn->getDnnType() == enums::dnn_type::low_comp) {
-                links_to_prune.push_back(dnn->getUploadData());
-                links_to_prune.push_back(dnn->getStateUpdate());
-            }
-
-            for (const auto &prune_link: links_to_prune) {
-                auto link_id = prune_link->getLinkActivityId();
-
-                auto new_network_link = std::vector<std::shared_ptr<model::LinkAct>>();
-
-                std::copy_if(WorkQueueManager::network->network_link.begin(),
-                             WorkQueueManager::network->network_link.end(), std::back_inserter(new_network_link),
-                             [link_id](std::shared_ptr<model::LinkAct> res) {
-                                 return res->getLinkActivityId() != link_id;
-                             });
-
-                WorkQueueManager::network->network_link = new_network_link;
-            }
 
             auto new_off_total = std::map<std::string, std::shared_ptr<model::BaseCompResult>>();
 
@@ -113,121 +95,34 @@ namespace services {
 
             std::map<std::string, std::shared_ptr<model::ComputationDevice>> &devices = WorkQueueManager::network->devices;
 
-            /*Need to create a copy of the network list so that we can keep track of incomplete net allocations */
-            std::vector<std::shared_ptr<model::LinkAct>> copyList;
-            for (const auto &i: WorkQueueManager::network->network_link) {
-                copyList.push_back(i);
-            }
 
-            /* Fetching bytes and latency from the stored net parameters from iperf test */
-            double bw_bytes = (WorkQueueManager::getAverageBitsPerSecond() / 8);
-            double latency_bytes = WorkQueueManager::getJitter() / 8;
-            bw_bytes += latency_bytes;
+            /* For each allocated low comp task we create a Result object
+             * the key is the dnn_id*/
 
-            uint64_t data_size_bytes = WorkQueueManager::state_size;
-            /* -------------------------------------------------------------------------- */
-
-            /* Need to find the earliest window for transferring data to host */
-            auto [dnn_id, host] = proc_item->getDnnIdAndDevice();
-
-            std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
-            auto times = services::findLinkSlot(
-                    currentTime, float(bw_bytes), LOW_TASK_SIZE, copyList);
-
-            std::shared_ptr<model::LinkAct> state_transfer = std::make_shared<model::LinkAct>(
-                    std::make_pair(times->first, times->second));
-            state_transfer->setHostNames(std::make_pair(CONTROLLER_HOSTNAME, host));
-            state_transfer->setDataSize(data_size_bytes);
-            state_transfer->setIsMeta(false);
-            copyList.push_back(state_transfer);
-
-            std::sort(copyList.begin(), copyList.end(),
-                      [](const std::shared_ptr<model::LinkAct> &a, const std::shared_ptr<model::LinkAct> &b) {
-                          return a->getStartFinTime().second < b->getStartFinTime().second;
-                      });
+            auto bR = std::make_shared<model::LowCompResult>(proc_item->getDnnId(), proc_item->getSourceDevice(), 1,
+                                                             proc_item->getStartTime(), proc_item->getFinishTime(),
+                                                             enums::dnn_type::low_comp);
 
 
-            /* Using the input upload window for each task generated we now allocate a time slot on their respective hosts */
-            auto result = services::allocate_task(item, devices, times);
-            auto time_window = result.second;
+            WorkQueueManager::off_total[bR->getDnnId()] = bR;
 
-            /* If we cannot allocate a device for even one task we instead create a new allocation request and a halt request */
-            if (!result.first) {
-#if DEADLINE_PREMPT
-                std::shared_ptr<model::WorkItem> workItem = std::make_shared<model::HaltWorkItem>(
-                        enums::request_type::halt_req, host);
+            std::shared_ptr<model::LowComplexityAllocationComms> baseNetworkCommsModel =
+                    std::make_shared<model::LowComplexityAllocationComms>(
+                            enums::network_comms_types::low_complexity_allocation,
+                            std::chrono::system_clock::now(),
+                            bR,
+                            bR->getSrcHost());
 
-                WorkQueueManager::add_task(workItem);
-                auto newTask = std::make_shared<model::LowProcessingItem>(item->getHostList(),
-                                                                          enums::request_type::low_complexity,
-                                                                          proc_item->getDeadline(),
-                                                                          proc_item->getDnnIdAndDevice());
-                newTask->setReallocation(true);
-                WorkQueueManager::add_task(std::static_pointer_cast<model::WorkItem>(newTask));
+            WorkQueueManager::network->devices[bR->getSrcHost()]->DNNS.push_back(bR);
+            WorkQueueManager::network->devices[bR->getSrcHost()]->setLastLowCompId(bR->getDnnId());
 
-                web::json::value halt_log;
-                halt_log["dnn_id"] = web::json::value::string(newTask->getDnnIdAndDevice().first);
-                WorkQueueManager::logManager->add_log(enums::LogTypeEnum::HALT_REQUEST, halt_log);
-#endif
-                web::json::value log;
-                log["dnn_id"] = web::json::value::string(proc_item->getDnnIdAndDevice().first);
-                log["current_time"] = web::json::value::number(
-                        std::chrono::system_clock::now().time_since_epoch().count() * 1000);
-                log["source_device"] = web::json::value::string(host);
-                log["deadline"] = web::json::value::number(proc_item->getDeadline().time_since_epoch().count() * 1000);
-                log["network"] = WorkQueueManager::network->convertToJson();
-                WorkQueueManager::logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL, log);
-                return;
+            web::json::value log;
+            log["dnn"] = bR->convertToJson();
+            WorkQueueManager::logManager->add_log(
+                    proc_item->isInvokedPreemption() ? enums::LogTypeEnum::LOW_COMP_PREMPT_ALLOCATION_SUCCESS
+                                                     : enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS, log);
+            services::lowTaskAllocation(baseNetworkCommsModel, WorkQueueManager::logManager);
 
-            } else {
-                /* For each allocated low comp task we create a Result object
-                 * the key is the dnn_id*/
-
-                auto deadline = proc_item->getDeadline();
-                auto bR = std::make_shared<model::LowCompResult>(dnn_id, host, 1, deadline, time_window->first,
-                                                                 time_window->second, state_transfer,
-                                                                 enums::dnn_type::low_comp
-                );
-
-                auto state_times = services::findLinkSlot(
-                        time_window->second + std::chrono::milliseconds{1}, float(bw_bytes), STATE_UPDATE_SIZE,
-                        copyList);
-
-                std::shared_ptr<model::LinkAct> state_update = std::make_shared<model::LinkAct>(
-                        std::make_pair(state_times->first, state_times->second));
-                state_transfer->setHostNames(std::make_pair(host, CONTROLLER_HOSTNAME));
-                state_transfer->setDataSize(STATE_UPDATE_SIZE);
-                state_transfer->setIsMeta(true);
-
-                bR->setStateUpdate(state_update);
-
-                WorkQueueManager::off_total[bR->getDnnId()] = bR;
-
-
-                /* Add communication times to the network link */
-                WorkQueueManager::network->addComm(state_transfer);
-                WorkQueueManager::network->addComm(state_update);
-
-                bR->setAllocatedHost(host);
-
-                std::shared_ptr<model::LowComplexityAllocationComms> baseNetworkCommsModel =
-                        std::make_shared<model::LowComplexityAllocationComms>(
-                                enums::network_comms_types::low_complexity_allocation,
-                                bR->getUploadData()->getStartFinTime().first,
-                                bR,
-                                bR->getSrcHost());
-
-                WorkQueueManager::network->devices[bR->getSrcHost()]->DNNS.push_back(bR);
-                WorkQueueManager::network->devices[bR->getSrcHost()]->setLastLowCompId(bR->getDnnId());
-
-                web::json::value log;
-                log["dnn"] = bR->convertToJson();
-                WorkQueueManager::logManager->add_log(
-                        proc_item->isReallocation() ? enums::LogTypeEnum::LOW_COMP_PREMPT_ALLOCATION_SUCCESS
-                                                    : enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS, log);
-                services::lowTaskAllocation(baseNetworkCommsModel, WorkQueueManager::logManager);
-            }
         }
         catch (std::exception &e) {
             std::cout << "WorkQueueManager, Low Comp Allocation: Crash" << e.what() << std::endl;
@@ -292,11 +187,11 @@ namespace services {
             int capacity = workRequest->getCapacity();
 
             std::string sourceHost = (*item->getHostList())[0];
-            int device_capacity =
-                    MAX_CORE_ALLOWANCE - gather_local_capacity_now(WorkQueueManager::network->devices[sourceHost]);
-
 //            int device_capacity =
-//                    MAX_CORE_ALLOWANCE - capacity;
+//                    MAX_CORE_ALLOWANCE - gather_local_capacity_now(WorkQueueManager::network->devices[sourceHost]);
+
+            int device_capacity =
+                    MAX_CORE_ALLOWANCE - capacity;
 
             auto currentTime = std::chrono::system_clock::now();
 
@@ -429,46 +324,24 @@ namespace services {
         try {
             auto haltWorkItem = std::static_pointer_cast<model::HaltWorkItem>(workItem);
             std::vector<std::string> hostList;
-            for (auto [host_id, host]: WorkQueueManager::network->getDevices()) {
-                hostList.push_back(host_id);
-            }
 
-            auto sourceDeviceId = haltWorkItem->getHostToExamine();
 
-            auto sourceDevice = WorkQueueManager::network->devices[sourceDeviceId];
-            auto tasks = sourceDevice->DNNS;
+            auto allocated_host = haltWorkItem->getAllocatedHost();
 
-            std::vector<std::pair<int, std::shared_ptr<model::HighCompResult>>> haltCandidates;
+            auto sourceDevice = WorkQueueManager::network->devices[allocated_host];
 
-            haltCandidates.reserve(tasks.size());
+            auto dnn_id = haltWorkItem->getDnnId();
+            std::shared_ptr<model::HighCompResult> dnnToPrune = std::static_pointer_cast<model::HighCompResult>(
+                    off_total[dnn_id]);
 
-            for (int i = 0; i < tasks.size(); i++) {
-                if (tasks[i]->getDnnType() != enums::dnn_type::low_comp &&
-                    tasks[i]->getEstimatedFinish() >= std::chrono::system_clock::now())
-                    haltCandidates.emplace_back(i, std::static_pointer_cast<model::HighCompResult>(tasks[i]));
-            }
 
-            std::shared_ptr<model::HighCompResult> dnnToPrune;
-
-            for (int i = 0; i < haltCandidates.size(); i++) {
-                if (i == 0) {
-                    dnnToPrune = haltCandidates[i].second;
-                } else {
-                    if (dnnToPrune->getDeadline() < haltCandidates[i].second->getDeadline())
-                        dnnToPrune = haltCandidates[i].second;
-                }
-            }
-
-            auto dnn_id = dnnToPrune->getDnnId();
-            auto allocated_device = dnnToPrune->getAllocatedHost();
-            WorkQueueManager::network->devices[allocated_device]->DNNS.erase(
-                    std::remove_if(WorkQueueManager::network->devices[allocated_device]->DNNS.begin(),
-                                   WorkQueueManager::network->devices[allocated_device]->DNNS.end(),
+            WorkQueueManager::network->devices[allocated_host]->DNNS.erase(
+                    std::remove_if(WorkQueueManager::network->devices[allocated_host]->DNNS.begin(),
+                                   WorkQueueManager::network->devices[allocated_host]->DNNS.end(),
                                    [dnn_id](std::shared_ptr<model::BaseCompResult> br) {
                                        return dnn_id == br->getDnnId();
-                                   }), WorkQueueManager::network->devices[allocated_device]->DNNS.end());
+                                   }), WorkQueueManager::network->devices[allocated_host]->DNNS.end());
 
-            auto versionToPrune = dnnToPrune->getVersion();
 
             dnnToPrune->setCoreAllocation(0);
             dnnToPrune->setEstimatedFinish(
@@ -484,14 +357,6 @@ namespace services {
             WorkQueueManager::off_total.erase(dnnToPrune->getDnnId());
 
             std::cout << "HALTING DNN: " << dnnToPrune->getDnnId() << std::endl;
-
-            std::shared_ptr<model::HaltNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::HaltNetworkCommsModel>(
-                    enums::network_comms_types::halt_req,
-                    std::chrono::system_clock::now(), sourceDevice->getHostName(), dnnToPrune->getDnnId(),
-                    versionToPrune);
-
-            services::haltReq(std::static_pointer_cast<model::BaseNetworkCommsModel>(baseNetworkCommsModel),
-                              WorkQueueManager::logManager);
 
             /* We attempt to reallocate the DNN if possible */
             auto host_list = std::make_shared<std::vector<std::string>>(
@@ -627,7 +492,7 @@ namespace services {
         double bw_bytes_per_second = (WorkQueueManager::getAverageBitsPerSecond() / 8);
         double latency_bytes = WorkQueueManager::getJitter() / 8;
         bw_bytes_per_second -= latency_bytes;
-        double bw_bytes_per_ms = bw_bytes_per_second / 1000;
+        double bw_bytes_per_ms = bw_bytes_per_second * 1000;
         return bw_bytes_per_ms;
     }
 

@@ -10,24 +10,30 @@
 
 namespace model {
 
-    class LowProcessingItem: public WorkItem{
+    class LowProcessingItem : public WorkItem {
     public:
         LowProcessingItem(const std::shared_ptr<std::vector<std::string>> &hostList, enums::request_type requestType,
-                          std::chrono::time_point<std::chrono::system_clock> deadline,
-                          std::pair<std::string, std::string> dnnIdsAndDevice);
+                          std::string dnnId, std::string sourceDevice,
+                          std::chrono::time_point<std::chrono::system_clock> startTime,
+                          std::chrono::time_point<std::chrono::system_clock> finishTime, bool invokePreemption);
 
-        const std::chrono::time_point<std::chrono::system_clock> &getDeadline() const;
+        const std::string &getDnnId() const;
 
-        void setDeadline(std::chrono::time_point<std::chrono::system_clock> &deadline);
+        const std::string &getSourceDevice() const;
 
-        const std::pair<std::string, std::string> &getDnnIdAndDevice() const;
+        const std::chrono::time_point<std::chrono::system_clock> &getStartTime() const;
 
-        void setDnnIdsAndDevice(const std::pair<std::string, std::string> &dnnIdsAndDevice);
+        const std::chrono::time_point<std::chrono::system_clock> &getFinishTime() const;
+
+        bool isInvokedPreemption() const;
 
     private:
         /* The key to both of these is the dnn_id */
-        std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::pair<std::string, std::string> dnn_ids_and_device;
+        std::string dnn_id;
+        std::string source_device;
+        std::chrono::time_point<std::chrono::system_clock> start_time;
+        std::chrono::time_point<std::chrono::system_clock> finish_time;
+        bool invoked_preemption;
     };
 
 } // model

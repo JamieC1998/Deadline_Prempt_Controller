@@ -14,6 +14,7 @@
 #include "../utils/IPerfTest/IPerfTest.h"
 #include "../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
 #include "../model/data_models/WorkItems/WorkRequest/WorkRequest.h"
+#include "../model/data_models/WorkItems/HaltWorkItem/HaltWorkItem.h"
 
 
 using namespace web;
@@ -53,30 +54,69 @@ void MasterController::handle_post(const http_request &message) {
             std::cout << "REQUEST_RECEIVED" << std::endl;
             if (path == LOG_RESULT) {
                 std::string result = MasterController::logManager->write_log();
-            } else if (path == RETURN_TASK) {
-                auto source_host = body["source_host"].as_string();
+            } else if (path == POST_HALT_TASK) {
+                auto source_host = message.remote_address();
                 auto dnn_id = body["dnn_id"].as_string();
-                std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
-                        std::initializer_list<std::string>{message.remote_address()});
 
-                auto stateUpdateItem = std::make_shared<model::StateUpdate>(hostList, enums::request_type::return_task,
-                                                                            std::chrono::system_clock::now(),
-                                                                            dnn_id);
+                auto haltItem = std::make_shared<model::HaltWorkItem>(enums::request_type::halt_req, source_host,
+                                                                      dnn_id);
+                workQueueManager->add_task(haltItem);
+            } else if (path == POST_LOW_TASK) {
+                auto source_host = message.remote_address();
+                auto dnn_id = body["dnn_id"].as_string();
+                uint64_t start_time = body["start_time"].as_integer();
+                uint64_t finish_time = body["finish_time"].as_integer();
+                auto request_id = body["request_id"].as_string();
+                auto invoke_preemption = body["invoke_preemption"].as_bool();
 
-                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(stateUpdateItem));
 
-                auto deadline = body["deadline"].as_number().to_uint64();
+                // Use std::find to check if the string is in the vector
+                auto it = std::find(MasterController::low_allocate_req_id.begin(),
+                                    MasterController::low_allocate_req_id.end(),
+                                    message.remote_address() + "_" + request_id);
 
-                std::shared_ptr<model::HighProcessingItem> highProcessingItem = std::make_shared<model::HighProcessingItem>(
-                        hostList,
-                        enums::request_type::high_complexity,
-                        std::chrono::time_point<std::chrono::system_clock>{
-                                std::chrono::milliseconds(deadline)},
-                        dnn_id);
+                if (it == MasterController::low_allocate_req_id.end()) {
 
-                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(highProcessingItem));
 
-            } else if (path == HIGH_WORK_REQUEST) {
+                    std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
+                            std::initializer_list<std::string>{source_host});
+
+                    enums::request_type requestType = enums::request_type::low_complexity;
+
+                    std::shared_ptr<model::LowProcessingItem> lowProcessingItem = std::make_shared<model::LowProcessingItem>(
+                            hostList, requestType, source_host, dnn_id,
+                            std::chrono::time_point<std::chrono::system_clock>{
+                                    std::chrono::milliseconds(start_time)},
+                            std::chrono::time_point<std::chrono::system_clock>{
+                                    std::chrono::milliseconds(finish_time)}, invoke_preemption);
+
+                    web::json::value log;
+                    log["dnn_id"] = web::json::value::string(dnn_id);
+                    log["source_host"] = web::json::value::string(message.remote_address());
+                    log["start_time"] = web::json::value::number(start_time);
+                    log["finish_time"] = web::json::value::number(finish_time);
+                    MasterController::logManager->add_log(enums::LogTypeEnum::LOW_COMP_REQUEST, log);
+
+                    MasterController::workQueueManager->add_task(lowProcessingItem);
+                    MasterController::low_allocate_req_id.push_back(message.remote_address() + "_" + request_id);
+                } else {
+                    std::cout << "DUPLICATE LOW OFFLOAD REQUEST FROM: " << message.remote_address() << std::endl;
+                }
+            }
+            else if (path == POST_LOW_COMP_FAIL){
+                auto source_host = message.remote_address();
+                auto dnn_id = body["dnn_id"].as_string();
+                uint64_t time = body["time"].as_integer();
+
+                std::chrono::time_point<std::chrono::system_clock> fail_time {std::chrono::milliseconds{time}};
+
+                web::json::value log;
+                log["dnn_id"] = web::json::value::string(dnn_id);
+                log["source_host"] = web::json::value::string(message.remote_address());
+                log["time"] = web::json::value::number(time);
+                MasterController::logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL, log);
+            }
+            else if (path == HIGH_WORK_REQUEST) {
 
                 enums::request_type requestType = enums::request_type::work_request;
 
@@ -162,45 +202,6 @@ void MasterController::handle_post(const http_request &message) {
                 }
                 return;
 
-            } else if (path == LOW_OFFLOAD_REQUEST) {
-                enums::request_type requestType = enums::request_type::low_complexity;
-
-                std::chrono::time_point<std::chrono::system_clock> deadline{
-                        std::chrono::milliseconds(body["deadline"].as_number().to_uint64())};
-
-                std::string dnn_id = body["dnn_id"].as_string();
-                auto request_id = body["request_id"].as_string();
-
-
-                // Use std::find to check if the string is in the vector
-                auto it = std::find(MasterController::low_allocate_req_id.begin(),
-                                    MasterController::low_allocate_req_id.end(),
-                                    message.remote_address() + "_" + request_id);
-
-                if (it == MasterController::low_allocate_req_id.end()) {
-
-                    std::string sourceDevice = message.remote_address();
-                    dnn_id = sourceDevice + "_" + dnn_id;
-
-                    std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
-                            std::initializer_list<std::string>{sourceDevice});
-
-                    std::shared_ptr<model::LowProcessingItem> lowProcessingItem = std::make_shared<model::LowProcessingItem>(
-                            hostList, requestType, deadline,
-                            std::make_pair(dnn_id, sourceDevice));
-
-                    web::json::value log;
-                    log["dnn_id"] = web::json::value::string(dnn_id);
-                    log["source_host"] = web::json::value::string(message.remote_address());
-                    log["deadline"] = web::json::value::number(body["deadline"].as_number().to_uint64());
-                    MasterController::logManager->add_log(enums::LogTypeEnum::LOW_COMP_REQUEST, log);
-
-                    MasterController::workQueueManager->add_task(lowProcessingItem);
-                    MasterController::low_allocate_req_id.push_back(message.remote_address() + "_" + request_id);
-                } else {
-                    std::cout << "DUPLICATE LOW OFFLOAD REQUEST FROM: " << message.remote_address() << std::endl;
-                }
-
             } else if (path == DEVICE_REGISTER_REQUEST) {
                 dev_list->register_device(message.remote_address());
                 std::shared_ptr<model::ComputationDevice> computationDevice = std::make_shared<model::ComputationDevice>(
@@ -224,7 +225,7 @@ void MasterController::handle_post(const http_request &message) {
                     /* Need to communicate outbound here */
                     std::shared_ptr<model::BaseNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::BaseNetworkCommsModel>(
                             enums::network_comms_types::initial_experiment_start, std::chrono::system_clock::now());
-                    initialise_experiment(dev_list->get_devices(), MasterController::logManager);
+                    initialise_experiment(dev_list->get_devices(), MasterController::logManager, ((bits_per_second.first - bits_per_second.second) / 8) * 1000);
                 }
 
             } else if (path == STATE_UPDATE) {
@@ -320,7 +321,7 @@ void MasterController::handle_post(const http_request &message) {
     }
 }
 
-void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<services::LogManager> logManager) {
+void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<services::LogManager> logManager, uint64_t bytes_per_ms) {
     web::json::value log;
     logManager->add_log(enums::LogTypeEnum::EXPERIMENT_INITIALISE, log);
 
@@ -334,6 +335,7 @@ void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<servi
 
     json::value result;
     result["start_time"] = web::json::value::number(millis);
+    result["bytes_per_ms"] = web::json::value::number(bytes_per_ms);
 
     // Use random_device to obtain a seed for the random number engine
     std::random_device rd;
@@ -348,6 +350,15 @@ void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<servi
         try {
             uint64_t variance = distribution(gen);
             variance = 0;
+
+            std::vector<web::json::value> tempHostList;
+
+            for(const auto &otherHost: hosts){
+                if(otherHost != hostName)
+                    tempHostList.push_back(web::json::value::string(otherHost));
+            }
+
+            result["client_list"] = web::json::value::array(tempHostList);
 
             web::http::http_request request(web::http::methods::POST);
             request.headers().set_content_type(U("application/json"));

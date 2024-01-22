@@ -33,6 +33,6 @@ private:
 
 };
 
-static void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<services::LogManager> logManager);
+static void initialise_experiment(std::vector<std::string> hosts, std::shared_ptr<services::LogManager> logManager, uint64_t bytes_per_ms);
 
 #endif //CONTROLLER_MASTERCONTROLLER_H

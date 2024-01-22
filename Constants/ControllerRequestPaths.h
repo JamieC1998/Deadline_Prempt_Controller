@@ -14,6 +14,9 @@ namespace constants {
 #define LOG_RESULT "/log_result"
 #define HIGH_WORK_REQUEST "/high_work_request"
 #define RETURN_TASK "/ret_task"
+#define POST_HALT_TASK "/halt"
+#define POST_LOW_TASK "/post_low_task"
+#define POST_LOW_COMP_FAIL "/low_comp_fail"
 }
 
 #endif //CONTROLLER_CONTROLLERREQUESTPATHS_H

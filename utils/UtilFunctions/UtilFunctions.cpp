@@ -100,7 +100,7 @@ namespace utils {
                 auto a_cast = std::static_pointer_cast<model::LowProcessingItem>(a);
                 auto b_cast = std::static_pointer_cast<model::LowProcessingItem>(b);
 
-                return a_cast->getDeadline() < b_cast->getDeadline();
+                return a_cast->getFinishTime() < b_cast->getFinishTime();
             } else if (a->getRequestType() == enums::request_type::high_complexity) {
                 auto a_cast = std::static_pointer_cast<model::HighProcessingItem>(a);
                 auto b_cast = std::static_pointer_cast<model::HighProcessingItem>(b);

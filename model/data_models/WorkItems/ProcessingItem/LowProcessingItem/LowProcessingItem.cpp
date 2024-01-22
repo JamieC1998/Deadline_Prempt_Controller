@@ -8,32 +8,35 @@
 
 namespace model {
 
-    const std::chrono::time_point<std::chrono::system_clock> &
-    LowProcessingItem::getDeadline() const {
-        return deadline;
-    }
-
-    void LowProcessingItem::setDeadline(
-            std::chrono::time_point<std::chrono::system_clock> &deadline) {
-        LowProcessingItem::deadline = deadline;
-    }
-
     LowProcessingItem::LowProcessingItem(const std::shared_ptr<std::vector<std::string>> &hostList,
                                          enums::request_type requestType,
-                                         std::chrono::time_point<std::chrono::system_clock> deadline,
-                                         std::pair<std::string, std::string> dnnIdsAndDevice) : WorkItem(hostList,
-                                                                                                         requestType),
-                                                                                                deadline(std::move(
-                                                                                                        deadline)),
-                                                                                                dnn_ids_and_device(
-                                                                                                        std::move(
-                                                                                                                dnnIdsAndDevice)) {}
+                                         std::string sourceDevice, std::string dnnId,
+                                         std::chrono::time_point<std::chrono::system_clock> startTime,
+                                         std::chrono::time_point<std::chrono::system_clock> finishTime,
+                                         bool invokedPreemption) : WorkItem(
+            hostList,
+            requestType), source_device(std::move(sourceDevice)), dnn_id(std::move(dnnId)), start_time(startTime),
+                                                                   finish_time(finishTime),
+                                                                   invoked_preemption(invokedPreemption) {}
 
-    const std::pair<std::string, std::string> &LowProcessingItem::getDnnIdAndDevice() const {
-        return dnn_ids_and_device;
+
+    const std::string &LowProcessingItem::getDnnId() const {
+        return dnn_id;
     }
 
-    void LowProcessingItem::setDnnIdsAndDevice(const std::pair<std::string, std::string> &dnnIdsAndDevice) {
-        dnn_ids_and_device = dnnIdsAndDevice;
+    const std::string &LowProcessingItem::getSourceDevice() const {
+        return source_device;
+    }
+
+    const std::chrono::time_point<std::chrono::system_clock> &LowProcessingItem::getStartTime() const {
+        return start_time;
+    }
+
+    const std::chrono::time_point<std::chrono::system_clock> &LowProcessingItem::getFinishTime() const {
+        return finish_time;
+    }
+
+    bool LowProcessingItem::isInvokedPreemption() const {
+        return invoked_preemption;
     }
 } // model

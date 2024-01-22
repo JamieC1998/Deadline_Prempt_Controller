@@ -11,22 +11,15 @@ namespace model {
 
     class HaltWorkItem : public WorkItem {
     public:
-        HaltWorkItem(enums::request_type requestType, const std::string &hostToExamine,
-                     const std::chrono::time_point<std::chrono::system_clock> &startTime,
-                     const std::chrono::time_point<std::chrono::system_clock> &finTime);
+        HaltWorkItem(enums::request_type requestType, std::string alloHost, std::string dnn_id);
 
-        HaltWorkItem(enums::request_type requestType, const std::string &hostToExamine);
+        const std::string &getAllocatedHost() const;
 
-        const std::string &getHostToExamine() const;
-
-        const std::chrono::time_point<std::chrono::system_clock> &getStartTime() const;
-
-        const std::chrono::time_point<std::chrono::system_clock> &getFinTime() const;
+        const std::string &getDnnId() const;
 
     private:
-        std::string host_to_examine;
-        std::chrono::time_point<std::chrono::system_clock> start_time;
-        std::chrono::time_point<std::chrono::system_clock> fin_time;
+        std::string allocated_host;
+        std::string dnn_id;
     };
 
 } // model

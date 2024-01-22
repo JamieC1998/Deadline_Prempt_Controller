@@ -18,13 +18,13 @@ namespace model {
 
         explicit BaseCompResult(enums::dnn_type dnnType);
 
-        BaseCompResult(std::string dnnId, std::string allocatedHost, std::string srcHost,
-                       int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
+        BaseCompResult(std::string dnnId, std::string srcHost,
+                       int coreAllocation,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                       std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType);
+                       enums::dnn_type dnnType);
 
-        BaseCompResult(std::string dnnId, std::string srcHost, int coreAllocation,
+        BaseCompResult(std::string dnnId, std::string alloHost, std::string srcHost, int coreAllocation,
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
