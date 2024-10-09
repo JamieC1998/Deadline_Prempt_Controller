@@ -9,6 +9,7 @@
 #include <vector>
 #include <memory>
 #include "../CompResult/BaseCompResult/BaseCompResult.h"
+#include "../ResourceAvailabilityList/ResourceAvailabilityList.h"
 
 namespace model {
 
@@ -35,6 +36,10 @@ namespace model {
         std::vector<std::shared_ptr<BaseCompResult>> DNNS;
 
         web::json::value convertToJson();
+
+        std::unordered_map<int, std::shared_ptr<model::ResourceAvailabilityList>> resource_avail_windows;
+
+        void resAvailRemoveAndSplit(std::shared_ptr<model::TimeWindow> tw, int coreUsage);
 
     private:
         int id;

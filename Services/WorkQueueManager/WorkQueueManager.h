@@ -15,6 +15,9 @@
 #include "../NetworkQueueManager/NetworkQueueManager.h"
 #include "../../model/data_models/CompResult/LowCompResult/LowCompResult.h"
 #include "../LOG_MANAGER/LogManager.h"
+#include "../../Constants/EMA.h"
+#include "../../Services/NetworkLinkDiscFunctions/NetworkDiscFunctions.h"
+#include "../../Constants/NETWORK_DISC_PARAMS.h"
 
 namespace services {
 
@@ -66,6 +69,10 @@ namespace services {
     static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
     static void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+
+    static void update_bw_vals(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+
+    static void update_network_disc(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
 } // services
 

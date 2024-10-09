@@ -32,7 +32,7 @@ namespace utils {
     void sortLink(std::vector<std::shared_ptr<model::LinkAct>>* network_link) {
         std::sort(network_link->begin(), network_link->end(),
                   [](const std::shared_ptr<model::LinkAct> &a, const std::shared_ptr<model::LinkAct> &b) {
-                      return a->getStartFinTime().second < b->getStartFinTime().second;
+                      return a->start_fin_time->stop < b->start_fin_time->stop;
                   });
     }
 

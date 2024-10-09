@@ -10,18 +10,17 @@
 #include <memory>
 #include "../ComputationDevice/ComputationDevice.h"
 #include "../LinkAct/LinkAct.h"
+#include "../Bucket/Bucket.h"
 
 namespace model {
 
     class Network {
     public:
         explicit Network();
-        std::vector<std::shared_ptr<LinkAct>> network_link;
-        std::vector<std::shared_ptr<LinkAct>>& getLink();
+        std::chrono::time_point<std::chrono::system_clock> last_time_of_reasoning = std::chrono::system_clock::now();
+        std::vector<std::shared_ptr<model::Bucket>> network_link;
         std::map<std::string, std::shared_ptr<ComputationDevice>>& getDevices();
-        void addComm(std::shared_ptr<LinkAct> linkAct);
-        void addComms(std::vector<std::shared_ptr<LinkAct>> linkActs);
-        void sortLink();
+
         std::map<std::string, std::shared_ptr<ComputationDevice>> devices;
         web::json::value convertToJson();
     };

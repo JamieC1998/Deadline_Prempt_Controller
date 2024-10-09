@@ -107,6 +107,14 @@ namespace services {
                 return "VIOLATED_DEADLINE";
             case enums::LogTypeEnum::VIOLATED_DEADLINE_REQUEST:
                 return "VIOLATED_DEADLINE_REQUEST";
+            case enums::LogTypeEnum::BANDWIDTH_UPDATE_LOG:
+                return "CLIENT_BANDWIDTH_UPDATE";
+            case enums::LogTypeEnum::BANDWIDTH_NEW_VALUE:
+                return "BANDWIDTH_NEW_VALUE";
+            case enums::LogTypeEnum::NEW_BUCKET_LINK:
+                return "NEW_BUCKET_LINK";
+            case enums::LogTypeEnum::OUTBOUND_COMMS_TEST:
+                return "OUTBOUND_COMMS_TEST";
         }
         return "NaN";
     }

@@ -14,22 +14,19 @@
 
 namespace model {
 
-    class HighCompResult: public BaseCompResult{
+    class HighCompResult : public BaseCompResult {
     public:
 
         HighCompResult(const std::string &dnnId, const std::string &allocatedHost, const std::string &srcHost,
                        int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                       const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType, int m, int n,
+                       enums::dnn_type dnnType, int m, int n,
                        std::shared_ptr<LinkAct> taskAllocation);
 
         HighCompResult(const std::string &dnnId, const std::string &srcHost,
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                       const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
-
-
-        void resetUploadData();
+                       enums::dnn_type dnnType);
 
         web::json::value convertToJson();
 

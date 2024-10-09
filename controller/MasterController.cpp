@@ -12,6 +12,7 @@
 #include "../Constants/CLIENT_DETAILS.h"
 #include "../utils/IPerfTest/IPerfTest.h"
 #include "../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
+#include "../model/data_models/WorkItems/BandwidthUpdate/BandwidthUpdateItem.h"
 
 
 using namespace web;
@@ -189,6 +190,27 @@ void MasterController::handle_post(const http_request &message) {
                 stateUpdateItem->setSuccess(false);
 
                 workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(stateUpdateItem));
+            }
+            else if(path == BANDWIDTH_UPDATE){
+                message.reply(status_codes::OK);
+                std::string host = message.remote_address();
+
+                std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
+                        std::initializer_list<std::string>{host});
+
+                enums::request_type requestType = enums::request_type::bandwidth_update;
+                web::json::value log;
+                log["bits_per_second"] = body["bits_per_second"];
+                log["source_device"] = web::json::value::string(host);
+                log["time"] = web::json::value::number(std::chrono::system_clock::now().time_since_epoch().count());
+                MasterController::logManager->add_log(enums::LogTypeEnum::BANDWIDTH_UPDATE_LOG, log);
+
+                std::vector<double> bits_per_second_vect = {} ;
+                for (auto& element : body["bits_per_second"].as_array())
+                    bits_per_second_vect.push_back(element.as_number().to_double());
+
+                auto bandwidth_update_item = std::make_shared<model::BandwidthUpdateItem>(requestType, bits_per_second_vect);
+                workQueueManager->add_task(std::static_pointer_cast<model::WorkItem>(bandwidth_update_item));
             }
         } else {
             message.reply(status_codes::NotFound);

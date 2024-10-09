@@ -15,6 +15,7 @@
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
 #include "../../model/data_models/NetworkCommsModels/HaltNetworkCommsModel/HaltNetworkCommsModel.h"
 #include "../../model/data_models/NetworkCommsModels/OutboundPrune/OutboundPrune.h"
+#include "../../model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h"
 
 using namespace std;
 using namespace web;
@@ -51,6 +52,8 @@ namespace services {
                             break;
                         case enums::network_comms_types::initial_experiment_start:
                             initialise_experiment(queueManager);
+                            break;
+                        case enums::network_comms_types::bandwidth_update:
                             break;
                     }
                 } else
@@ -93,6 +96,27 @@ namespace services {
         }
     }
 
+    void bandwidthUpdate(std::shared_ptr<model::BaseNetworkCommsModel> comms_model,
+                         std::shared_ptr<services::NetworkQueueManager> queueManager) {
+        auto bw_mod = std::static_pointer_cast<model::BandwidthTestCommsModel>(comms_model);
+
+        auto chosen_host = bw_mod->chosen_host;
+
+        web::json::value log;
+        log["chosen_host"] = web::json::value::string(chosen_host);
+        log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                comms_model->getCommTime().time_since_epoch()).count());
+        queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_COMMS_TEST, log);
+
+//        EXECUTE_BW_TEST
+        std::string baseURI = "http://" + chosen_host + ":" + std::string(HIGH_CLIENT_PORT);
+
+        http::client::http_client(baseURI).request(
+                http::methods::POST,
+                "/" +
+                std::string(EXECUTE_BW_TEST));
+    }
+
     void
     highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
                        std::shared_ptr<services::NetworkQueueManager> queueManager) {
@@ -110,12 +134,14 @@ namespace services {
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_TASK_ALLOCATION_HIGH, log);
 
         bool is_source_allocation = br->getSrcHost() == br->getAllocatedHost();
-        output["allocated_host"] = web::json::value::string( is_source_allocation ? "self" : br->getAllocatedHost());
-        if(!is_source_allocation)
+        output["allocated_host"] = web::json::value::string(is_source_allocation ? "self" : br->getAllocatedHost());
+        if (!is_source_allocation)
             output["upload_data"] = br->getTaskAllocation()->convertToJson();
 
-        output["start_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(br->getEstimatedStart().time_since_epoch()).count());
-        output["finish_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(br->getEstimatedFinish().time_since_epoch()).count());
+        output["start_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                br->getEstimatedStart().time_since_epoch()).count());
+        output["finish_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                br->getEstimatedFinish().time_since_epoch()).count());
         output["dnn_id"] = web::json::value::string(br->getDnnId());
         output["N"] = web::json::value::number(br->getN());
         output["M"] = web::json::value::number(br->getM());
@@ -194,7 +220,8 @@ namespace services {
         log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
                 comm_model->getCommTime().time_since_epoch()).count());
         log["estimated_start"] = web::json::value::string(utils::debugTimePointToString(task_res->getEstimatedStart()));
-        log["estimated_finish"] = web::json::value::string(utils::debugTimePointToString(task_res->getEstimatedFinish()));
+        log["estimated_finish"] = web::json::value::string(
+                utils::debugTimePointToString(task_res->getEstimatedFinish()));
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
 
         web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(

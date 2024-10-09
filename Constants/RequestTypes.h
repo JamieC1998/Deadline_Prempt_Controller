@@ -8,11 +8,14 @@
 namespace constant {
 
 #define REQ_TYPE_STATE_UPDATE 1
-#define PRUNE_DNN 2
-#define HALT_REQ 3
-#define DAG_DISRUPTION 4
-#define LOW_COMPLEXITY 5
-#define HIGH_COMPLEXITY 6
+#define BANDWIDTH_UPDATE_ITEM 2
+#define NETWORK_DISC_UPDATE 3
+#define PRUNE_DNN 3
+#define HALT_REQ 4
+#define DAG_DISRUPTION 5
+#define LOW_COMPLEXITY 6
+#define HIGH_COMPLEXITY 7
+
 
 }
 #endif //CONTROLLER_REQUESTTYPES_H
