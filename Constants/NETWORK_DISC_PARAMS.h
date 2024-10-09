@@ -1,0 +1,14 @@
+//
+// Created by Jamie Cotter on 04/10/2024.
+//
+
+#ifndef CONTROLLER_NETWORK_DISC_PARAMS_H
+#define CONTROLLER_NETWORK_DISC_PARAMS_H
+
+namespace constant{
+#define BASE_BUCKET_COUNT 100
+#define EXP_BUCKET_COUNT 10
+#define NETWORK_PING_FREQ_MS 2500
+}
+
+#endif //CONTROLLER_NETWORK_DISC_PARAMS_H
