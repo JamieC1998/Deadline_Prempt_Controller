@@ -6,15 +6,12 @@
 #include "cpprest/http_client.h"
 #include <cpprest/filestream.h>
 
-#include <utility>
 #include <filesystem>
 #include "../../Constants/CLIENT_DETAILS.h"
 #include "../../utils/UtilFunctions/UtilFunctions.h"
 #include "../../model/data_models/NetworkCommsModels/HighComplexityAllocation/HighComplexityAllocationComms.h"
-#include "../../model/data_models/NetworkCommsModels/OutboundUpdate/OutboundUpdate.h"
 #include "../../model/data_models/NetworkCommsModels/LowComplexityAllocation/LowComplexityAllocationComms.h"
 #include "../../model/data_models/NetworkCommsModels/HaltNetworkCommsModel/HaltNetworkCommsModel.h"
-#include "../../model/data_models/NetworkCommsModels/OutboundPrune/OutboundPrune.h"
 #include "../../model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h"
 
 using namespace std;
@@ -54,6 +51,7 @@ namespace services {
                             initialise_experiment(queueManager);
                             break;
                         case enums::network_comms_types::bandwidth_update:
+                            bandwidthUpdate(comms_model, queueManager);
                             break;
                     }
                 } else
@@ -109,12 +107,22 @@ namespace services {
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_COMMS_TEST, log);
 
 //        EXECUTE_BW_TEST
-        std::string baseURI = "http://" + chosen_host + ":" + std::string(HIGH_CLIENT_PORT);
+        std::string baseURI = "http://" + chosen_host + ":" + std::string(LOW_COMP_PORT);
+
+        json::value output;
+        std::vector<json::value> val_list;
+
+        for (auto host: queueManager->hosts) {
+            if (host != chosen_host)
+                val_list.push_back(json::value::string(host));
+        }
+        json::value host_list = json::value::array(val_list);
+        output["hosts"] = host_list;
 
         http::client::http_client(baseURI).request(
                 http::methods::POST,
                 "/" +
-                std::string(EXECUTE_BW_TEST));
+                std::string(EXECUTE_BW_TEST), output.serialize());
     }
 
     void
@@ -139,31 +147,70 @@ namespace services {
             output["upload_data"] = br->getTaskAllocation()->convertToJson();
 
         output["start_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                br->getEstimatedStart().time_since_epoch()).count());
+                br->estimated_start_fin->start.time_since_epoch()).count());
         output["finish_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                br->getEstimatedFinish().time_since_epoch()).count());
+                br->estimated_start_fin->stop.time_since_epoch()).count());
         output["dnn_id"] = web::json::value::string(br->getDnnId());
         output["N"] = web::json::value::number(br->getN());
         output["M"] = web::json::value::number(br->getM());
         output["version"] = web::json::value::number(br->getVersion());
 
 
+        if(br->getSrcHost() != br->getAllocatedHost())
+            std::cout << "";
         std::chrono::time_point<std::chrono::system_clock> comm_start = std::chrono::system_clock::now();
         std::string baseURI = "http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT);
         std::cout << "HIGH_COMP_ALLOCATION: " << baseURI << "/" << std::string(HIGH_TASK_ALLOCATION) << std::endl;
-        http::client::http_client(baseURI).request(
-                http::methods::POST,
-                "/" +
-                std::string(HIGH_TASK_ALLOCATION),
-                output.serialize()).then(
-                [comm_start, br, highCompComm](web::http::http_response response) {
-                    try {
-                        std::cout << "Status code: " << response.status_code() << std::endl;
-                    }
-                    catch (exception e) {
-                        std::cout << e.what() << std::endl;
-                    }
-                });
+
+
+//        http::client::http_client(baseURI).request(
+//                http::methods::POST,
+//                "/" +
+//                std::string(HIGH_TASK_ALLOCATION),
+//                output.serialize()).then(
+//                [comm_start, br, highCompComm, baseURI](web::http::http_response response) {
+//                    try {
+//                        std::cout << baseURI << "\t-\tStatus code: " << response.status_code() << std::endl;
+//                    }
+//                    catch (exception e) {
+//                        std::cout << e.what() << std::endl;
+//                    }
+//                });
+
+
+        bool success = false;
+
+        while (!success) {
+            try {
+                http::client::http_client client(U(baseURI));
+
+                client.request(http::methods::methods::POST,
+                               U("/" + std::string(HIGH_TASK_ALLOCATION)),
+                               output.serialize())
+                        .then([&success, baseURI](http::http_response response) {
+                            try {
+                                std::cout << baseURI << "\t-\tStatus code: " << response.status_code() << std::endl;
+
+                                // Check if the response is successful (2xx)
+                                if (response.status_code() >= 200 && response.status_code() < 300) {
+                                    std::cout << "Request succeeded." << std::endl;
+                                    success = true; // Set flag to terminate the loop
+                                } else {
+                                    std::cerr << "Request failed with status code: " << response.status_code() << std::endl;
+                                }
+                            } catch (const std::exception& e) {
+                                std::cerr << "Error processing response: " << e.what() << std::endl;
+                            }
+                        }).wait(); // Wait for the task to complete
+            } catch (const std::exception& e) {
+                std::cerr << "Request failed: " << e.what() << std::endl;
+            }
+
+            if (!success) {
+                // Wait before retrying if the request hasn't succeeded
+                std::cerr << "Retrying request..." << std::endl;
+            }
+        }
 
     }
 
@@ -211,17 +258,18 @@ namespace services {
         json::value result;
         result["dnn_id"] = json::value::string(task_res->getDnnId());
         result["start_time"] = json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                task_res->getEstimatedStart().time_since_epoch()).count());
+                task_res->estimated_start_fin->start.time_since_epoch()).count());
         result["finish_time"] = json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-                task_res->getEstimatedFinish().time_since_epoch()).count());
+                task_res->estimated_start_fin->stop.time_since_epoch()).count());
 
         web::json::value log;
         log["dnn"] = web::json::value(task_res->convertToJson());
         log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
                 comm_model->getCommTime().time_since_epoch()).count());
-        log["estimated_start"] = web::json::value::string(utils::debugTimePointToString(task_res->getEstimatedStart()));
+        log["estimated_start"] = web::json::value::string(
+                utils::debugTimePointToString(task_res->estimated_start_fin->start));
         log["estimated_finish"] = web::json::value::string(
-                utils::debugTimePointToString(task_res->getEstimatedFinish()));
+                utils::debugTimePointToString(task_res->estimated_start_fin->stop));
         queueManager->logManager->add_log(enums::LogTypeEnum::OUTBOUND_LOW_COMP_ALLOCATION, log);
 
         web::http::client::http_client("http://" + host + ":" + std::string(LOW_COMP_PORT)).request(

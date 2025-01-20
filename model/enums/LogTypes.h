@@ -41,7 +41,8 @@ namespace enums {
         BANDWIDTH_UPDATE_LOG = 31,
         BANDWIDTH_NEW_VALUE = 32,
         NEW_BUCKET_LINK = 33,
-        OUTBOUND_COMMS_TEST = 34
+        OUTBOUND_COMMS_TEST = 34,
+        LOW_COMP_PREEMPTION = 35
     };
 
 } // model

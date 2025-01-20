@@ -39,7 +39,9 @@ namespace model {
 
         std::unordered_map<int, std::shared_ptr<model::ResourceAvailabilityList>> resource_avail_windows;
 
-        void resAvailRemoveAndSplit(std::shared_ptr<model::TimeWindow> tw, int coreUsage);
+        void resAvailRemoveAndSplit(std::shared_ptr<model::TimeWindow> tw, int coreUsage, int taskCounter);
+
+        void generateDefaultResourceConfig(int cores, std::string hostName);
 
     private:
         int id;

@@ -16,8 +16,8 @@ namespace model {
     web::json::value TimeWindow::convertToJson() {
         web::json::value result;
 
-        result["start"] = TimeWindow::start.time_since_epoch().count();
-        result["stop"] = TimeWindow::stop.time_since_epoch().count();
+        result["start"] = web::json::value::number(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(TimeWindow::start.time_since_epoch()).count()));
+        result["stop"] = web::json::value::number(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(TimeWindow::stop.time_since_epoch()).count()));
 
         return result;
     }

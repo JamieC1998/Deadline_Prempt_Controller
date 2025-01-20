@@ -18,6 +18,9 @@
 #include "../../Constants/EMA.h"
 #include "../../Services/NetworkLinkDiscFunctions/NetworkDiscFunctions.h"
 #include "../../Constants/NETWORK_DISC_PARAMS.h"
+#include "../../model/data_models/NetworkCommsModels/HighComplexityAllocation/HighComplexityAllocationComms.h"
+#include "../ProcessingDataStructureConversion/ProcessingDataStructureConversion.h"
+#include "../../Constants/RequestSizes.h"
 
 namespace services {
 
@@ -27,7 +30,7 @@ namespace services {
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
-        [[noreturn]] static void main_loop(WorkQueueManager* queueManager);
+        [[noreturn]] static void main_loop(WorkQueueManager *queueManager);
 
         static void decrementThreadCounter();
 
@@ -47,12 +50,11 @@ namespace services {
 
         void setJitter(double jitter);
 
-        uint64_t state_size = 0;
+        uint64_t state_size = LOW_TASK_SIZE;
 
-        std::map<std::string, std::shared_ptr<model::BaseCompResult>> off_total;
-        std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
-        std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
         std::shared_ptr<services::LogManager> logManager;
+
+        bool start = false;
     private:
         static std::atomic<int> thread_counter;
         std::vector<std::shared_ptr<model::WorkItem>> current_task;
@@ -62,18 +64,58 @@ namespace services {
         double jitter = 0.0;
     };
 
-    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
-    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
-    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
-    static void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
-    static void update_bw_vals(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void update_bw_vals(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
-    static void update_network_disc(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
+    static void update_network_disc(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
 
+    static void regenerate_res_data_structure(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager *queueManager);
+
+    int selectResourceConfig(std::chrono::time_point<std::chrono::system_clock> start,
+                             std::chrono::time_point<std::chrono::system_clock> deadline);
+
+    std::vector<int> gatherCommSlots(int task_count, std::vector<std::shared_ptr<model::Bucket>> netlink,
+                                     std::chrono::time_point<std::chrono::system_clock> currentTime,
+                                     std::chrono::time_point<std::chrono::system_clock> last_time_of_reasoning,
+                                     double bytes_per_millisecond
+    );
+
+    static void findResourceWindow(std::chrono::time_point<std::chrono::system_clock> start_time,
+                                   std::chrono::time_point<std::chrono::system_clock> deadline,
+                                   std::shared_ptr<model::ComputationDevice> device, int resourceConfig, int task_count,
+                                   std::string host,
+                                   std::map<std::string, std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>> &results,
+                                   std::mutex &mtx);
+
+    std::pair<std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>, std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>>
+    selectResults(
+            std::map<std::string, std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>> placement_results,
+            std::string sourceHost, int task_count);
+
+    std::tuple<std::vector<int>, std::vector<std::shared_ptr<model::HighCompResult>>, std::vector<std::shared_ptr<model::HighComplexityAllocationComms>>>
+    generateHighCompResults(
+            std::vector<std::string> dnnIds,
+            std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>> source_selected_results,
+            std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>> offloaded_selected_results,
+            std::vector<std::shared_ptr<model::Bucket>> network_link,
+            std::vector<int> task_comm_windows,
+            std::string sourceHost,
+            int resourceConfig,
+            std::chrono::time_point<std::chrono::system_clock> currentTime,
+            uint64_t processing_time,
+            int n,
+            int m,
+            std::chrono::time_point<std::chrono::system_clock> deadline, bool isReallocation
+    );
+
+    std::tuple<int, int, uint64_t> selectResourceUsage(int resourceConfig);
 } // services
 
 #endif //CONTROLLER_WORKQUEUEMANAGER_H

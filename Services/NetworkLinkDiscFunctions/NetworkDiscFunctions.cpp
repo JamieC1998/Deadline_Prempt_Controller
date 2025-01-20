@@ -43,9 +43,11 @@ namespace services {
             current_time += std::chrono::milliseconds{base_comm_size_ms * current_bucket_size};
         }
 
+        if(net_link.empty())
+            return new_net_link;
         // Begin iterating through our old link in reverse order
         // Moving any comm items that haven't expired to an appropriate bucket
-        for (size_t i = net_link.size() - 1; i >= 0; --i) {
+        for (int i = net_link.size() - 1; i >= 0; --i) {
             // If the complete bucket is expired, continue
             if (net_link[i]->timeWindow->stop < current_time_of_reasoning) {
                 break;

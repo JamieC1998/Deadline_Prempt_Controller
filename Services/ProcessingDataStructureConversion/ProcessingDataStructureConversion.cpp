@@ -50,14 +50,14 @@ namespace services {
                 }
             } else {
                 if ((currentEnd - currentStart) >= minimumDuration && currentEnd >= startTime) {
-                    mergedRanges.push_back(std::make_shared<model::ResourceWindow>(std::max(currentStart, startTime), currentEnd, id,currentCapacity));
+                    mergedRanges.push_back(std::make_shared<model::ResourceWindow>(std::max(currentStart, startTime), currentEnd, id, 0,currentCapacity));
                 }
                 currentStart = end;
                 currentCapacity = 0;
             }
         }
 
-        mergedRanges.push_back(std::make_shared<model::ResourceWindow>(currentStart, currentEnd, id, currentCapacity ));
+        mergedRanges.push_back(std::make_shared<model::ResourceWindow>(currentStart, currentEnd, id, 0, currentCapacity));
 
         return mergedRanges;
     }
@@ -82,7 +82,7 @@ namespace services {
 
         std::vector<model::ResourceTransformation> resourceVariance;
 
-        for (auto task: sortedTaskList) {
+        for (const auto& task: sortedTaskList) {
             resourceVariance.emplace_back(true, task->estimated_start_fin->start, task->getCoreAllocation());
             resourceVariance.emplace_back(false, task->estimated_start_fin->stop, task->getCoreAllocation());
         }
@@ -97,7 +97,7 @@ namespace services {
         auto currentCapacity = resourceVariance.front().resourceUsage;
 
         for (auto i = 1; i < resourceVariance.size(); ++i) {
-            nonOverlappingUsage.emplace_back(std::make_shared<model::ResourceWindow>(currentStart, resourceVariance[i].timestamp, deviceId, currentCapacity));
+            nonOverlappingUsage.emplace_back(std::make_shared<model::ResourceWindow>(currentStart, resourceVariance[i].timestamp, deviceId, 0, currentCapacity));
             currentStart = resourceVariance[i].timestamp;
 
             if (resourceVariance[i].isIncrease) {

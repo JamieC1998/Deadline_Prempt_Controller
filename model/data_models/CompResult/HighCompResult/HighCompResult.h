@@ -11,6 +11,7 @@
 #include "../../../enums/DNN_Type_Enum.h"
 #include "../BaseCompResult/BaseCompResult.h"
 #include "../../LinkAct/LinkAct.h"
+#include "../../Bucket/Bucket.h"
 
 namespace model {
 
@@ -22,7 +23,7 @@ namespace model {
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
                        enums::dnn_type dnnType, int m, int n,
-                       std::shared_ptr<LinkAct> taskAllocation);
+                       std::shared_ptr<Bucket> taskAllocation);
 
         HighCompResult(const std::string &dnnId, const std::string &srcHost,
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
@@ -38,9 +39,9 @@ namespace model {
 
         void setN(int n);
 
-        const std::shared_ptr<LinkAct> &getTaskAllocation() const;
+        const std::shared_ptr<Bucket> &getTaskAllocation() const;
 
-        void setTaskAllocation(const std::shared_ptr<LinkAct> &taskAllocation);
+        void setTaskAllocation(const std::shared_ptr<Bucket> &taskAllocation);
 
         uint64_t getVersion() const;
 
@@ -50,7 +51,7 @@ namespace model {
         int M = 0;
         int N = 0;
 
-        std::shared_ptr<LinkAct> task_allocation;
+        std::shared_ptr<Bucket> task_allocation;
         uint64_t version = std::chrono::system_clock::now().time_since_epoch().count() * 1000;
     };
 

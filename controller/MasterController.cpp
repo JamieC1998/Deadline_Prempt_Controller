@@ -6,8 +6,6 @@
 #include "../Constants/ControllerRequestPaths.h"
 #include "../model/data_models/WorkItems/ProcessingItem/HighProcessingItem/HighProcessingItem.h"
 #include "../model/data_models/WorkItems/StateUpdate/StateUpdate.h"
-#include "../utils/UtilFunctions/UtilFunctions.h"
-#include <iperf_api.h>
 #include <thread>
 #include "../Constants/CLIENT_DETAILS.h"
 #include "../utils/IPerfTest/IPerfTest.h"
@@ -117,8 +115,9 @@ void MasterController::handle_post(const http_request &message) {
                 message.reply(response);
             } else if (path == DEVICE_REGISTER_REQUEST) {
                 dev_list->register_device(message.remote_address());
+                auto hostname = std::string(message.remote_address());
                 std::shared_ptr<model::ComputationDevice> computationDevice = std::make_shared<model::ComputationDevice>(
-                        PER_DEVICE_CORES, message.remote_address());
+                        PER_DEVICE_CORES, hostname);
                 workQueueManager->network->devices[message.remote_address()] = computationDevice;
                 workQueueManager->networkQueueManager->hosts.push_back(message.remote_address());
                 web::json::value response;
@@ -141,6 +140,7 @@ void MasterController::handle_post(const http_request &message) {
                     std::shared_ptr<model::BaseNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::BaseNetworkCommsModel>(
                             enums::network_comms_types::initial_experiment_start, std::chrono::system_clock::now());
                     workQueueManager->networkQueueManager->addTask(baseNetworkCommsModel);
+                    workQueueManager->start = true;
                 }
 
             } else if (path == STATE_UPDATE) {
@@ -194,6 +194,7 @@ void MasterController::handle_post(const http_request &message) {
             else if(path == BANDWIDTH_UPDATE){
                 message.reply(status_codes::OK);
                 std::string host = message.remote_address();
+                auto str = static_cast<std::string>(body.to_string());
 
                 std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
                         std::initializer_list<std::string>{host});
@@ -206,7 +207,8 @@ void MasterController::handle_post(const http_request &message) {
                 MasterController::logManager->add_log(enums::LogTypeEnum::BANDWIDTH_UPDATE_LOG, log);
 
                 std::vector<double> bits_per_second_vect = {} ;
-                for (auto& element : body["bits_per_second"].as_array())
+                auto json_bps_arr = body["bits_per_second"].as_array();
+                for (auto& element : json_bps_arr)
                     bits_per_second_vect.push_back(element.as_number().to_double());
 
                 auto bandwidth_update_item = std::make_shared<model::BandwidthUpdateItem>(requestType, bits_per_second_vect);

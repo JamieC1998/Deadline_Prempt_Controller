@@ -24,11 +24,11 @@ namespace model {
         N = n;
     }
 
-    const std::shared_ptr<LinkAct> &HighCompResult::getTaskAllocation() const {
+    const std::shared_ptr<Bucket> &HighCompResult::getTaskAllocation() const {
         return task_allocation;
     }
 
-    void HighCompResult::setTaskAllocation(const std::shared_ptr<LinkAct> &taskAllocation) {
+    void HighCompResult::setTaskAllocation(const std::shared_ptr<Bucket> &taskAllocation) {
         task_allocation = taskAllocation;
     }
 
@@ -46,7 +46,7 @@ namespace model {
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
                                    enums::dnn_type dnnType, int m, int n,
-                                   std::shared_ptr<LinkAct> taskAllocation) : BaseCompResult(
+                                   std::shared_ptr<Bucket> taskAllocation) : BaseCompResult(
             dnnId, allocatedHost, srcHost, coreAllocation, deadline, estimatedStart, estimatedFinish,
             dnnType), M(m), N(n), task_allocation(std::move(taskAllocation)) {}
 

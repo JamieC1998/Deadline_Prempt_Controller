@@ -25,6 +25,7 @@ namespace services {
         void addTask(std::shared_ptr<model::BaseNetworkCommsModel> comm_model);
 
         [[nodiscard]] const std::vector<std::string> &getHosts() const;
+
         std::vector<std::string> hosts;
 
         std::shared_ptr<services::LogManager> logManager;
@@ -33,9 +34,18 @@ namespace services {
         std::vector<std::shared_ptr<model::BaseNetworkCommsModel>> comms;
     };
 
-    static void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
-    static void highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
-    static void lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model, std::shared_ptr<services::NetworkQueueManager> queueManager);
+    static void haltReq(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                        std::shared_ptr<services::NetworkQueueManager> queueManager);
+
+    static void highTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                                   std::shared_ptr<services::NetworkQueueManager> queueManager);
+
+    static void lowTaskAllocation(std::shared_ptr<model::BaseNetworkCommsModel> comm_model,
+                                  std::shared_ptr<services::NetworkQueueManager> queueManager);
+
     static void initialise_experiment(std::shared_ptr<services::NetworkQueueManager> queueManager);
+
+    static void bandwidthUpdate(std::shared_ptr<model::BaseNetworkCommsModel> comms_model,
+                                     std::shared_ptr<services::NetworkQueueManager> queueManager);
 }
 #endif //CONTROLLER_NETWORKQUEUEMANAGER_H

@@ -27,6 +27,15 @@ namespace model {
         constrainedContainmentQuery(std::chrono::time_point<std::chrono::system_clock> start,
                          std::chrono::time_point<std::chrono::system_clock> finish, std::string hostname);
 
+        bool overlapComparison(std::chrono::time_point<std::chrono::system_clock> interval_start,
+                               std::chrono::time_point<std::chrono::system_clock> interval_finish,
+                               std::chrono::time_point<std::chrono::system_clock> window_start,
+                               std::chrono::time_point<std::chrono::system_clock> window_finish);
+
+        std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>
+        overlapQuery(std::chrono::time_point<std::chrono::system_clock> start,
+                                               std::chrono::time_point<std::chrono::system_clock> finish);
+
         static bool
         containmentComparison(std::chrono::time_point<std::chrono::system_clock> interval_start,
                                                         std::chrono::time_point<std::chrono::system_clock> interval_finish,
@@ -41,6 +50,8 @@ namespace model {
                                  std::chrono::milliseconds minProcessingTime,
                                  std::chrono::time_point<std::chrono::system_clock> start_time,
                                  std::string hostname);
+
+        std::string toString();
 
         void insert(std::vector<std::shared_ptr<model::ResourceWindow>> input_windows);
 

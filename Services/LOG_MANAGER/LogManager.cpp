@@ -65,6 +65,8 @@ namespace services {
                 return "LOW_COMP_FINISH";
             case enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL:
                 return "LOW_COMP_ALLOCATION_FAIL";
+            case enums::LogTypeEnum::LOW_COMP_PREEMPTION:
+                return "LOW_COMP_ALLOCATION_PREEMPTION";
             case enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS:
                 return "LOW_COMP_ALLOCATION_SUCCESS";
             case enums::LogTypeEnum::LOW_COMP_PREMPT_ALLOCATION_SUCCESS:

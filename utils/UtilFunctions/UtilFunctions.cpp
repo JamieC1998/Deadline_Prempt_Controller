@@ -29,58 +29,6 @@ namespace utils {
         return in.tellg();
     }
 
-    void sortLink(std::vector<std::shared_ptr<model::LinkAct>>* network_link) {
-        std::sort(network_link->begin(), network_link->end(),
-                  [](const std::shared_ptr<model::LinkAct> &a, const std::shared_ptr<model::LinkAct> &b) {
-                      return a->start_fin_time->stop < b->start_fin_time->stop;
-                  });
-    }
-
-    unsigned long calculateStateUpdateSize() {
-        web::json::value output;
-        output["type"] = web::json::value(true);
-        output["task_id"] = web::json::value(INT_MAX);
-
-        return std::string(output.serialize()).length() * sizeof(char);
-    }
-
-    /* Function calculates the N * M position of a task given its flatteened index */
-    std::pair<int, int> fetchN_M(int position, int width, int height) {
-        position = position + 1;
-        int counter = 1;
-        int N = 1;
-        int M = 1;
-        for(int i = 1; i <= height; i++){
-            M = i;
-            for(int j = 1; j <= width; j++){
-                N = j;
-                if(counter == position)
-                    return std::make_pair(N, M);
-                counter++;
-            }
-
-        }
-        return std::make_pair(N, M);
-    }
-
-    bool is_allocated(std::string task_id, std::vector<std::string> completed_tasks){
-        for(const auto& comp_id: completed_tasks){
-            if(task_id == comp_id)
-                return true;
-        }
-        return false;
-    }
-
-    std::map<std::string, int> generateAllocationMap(std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices){
-        std::map<std::string, int> alloMap;
-
-        for(const auto& [device_id, device]: devices){
-            alloMap[device_id] = 0;
-        }
-
-        return alloMap;
-    }
-
     std::string debugTimePointToString(const std::chrono::system_clock::time_point& tp)
     {
         const char* format = "%Y-%m-%d %H:%M:%S.%f";
@@ -90,6 +38,25 @@ namespace utils {
         std::stringstream ss;
         ss << std::put_time(&tm, format) << "." << std::setfill('0') << std::setw(3) << ms.count();
         return ss.str();
+    }
+
+    bool verify_res_avail(model::ResourceAvailabilityList* resourceAvailabilityList) {
+        std::vector<int> unique_ids = {};
+        for(const auto & resource_window : resourceAvailabilityList->resource_windows){
+            bool insert = true;
+            for(int unique_id : unique_ids){
+                if(unique_id == resource_window->track_id){
+                    insert = false;
+                }
+            }
+            if(insert && resource_window->timeWindow->stop == std::chrono::system_clock::time_point::max())
+                unique_ids.push_back(resource_window->track_id);
+        }
+        if(unique_ids.size() != resourceAvailabilityList->device_track_count) {
+            std::cout << "";
+            return false;
+        }
+        return true;
     }
 } // utils
 

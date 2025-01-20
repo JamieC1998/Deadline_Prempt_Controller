@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 project(controller)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+set(CMAKE_OSX_SYSROOT /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk)
+set(CMAKE_C_COMPILER /usr/bin/clang)
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
 set(OPENSSL_ROOT_DIR "/opt/homebrew/opt/openssl@3/")
 set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
@@ -19,9 +24,10 @@ find_library(IPERF_LIBRARY iperf)
 set(OpenSSL_LIBRARIES
         "${OPENSSL_ROOT_DIR}lib/libcrypto.dylib"
         "${OPENSSL_ROOT_DIR}lib/libssl.dylib")
-include_directories(${OpenSSL_INCLUDE})
+include_directories(${OPENSSL_INCLUDE_DIR})
 
-add_executable(controller
+add_executable(
+        controller
         main.cpp
         controller/MasterController.cpp
         controller/MasterController.h
@@ -121,4 +127,5 @@ add_executable(controller
         model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.cpp
         model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h
 )
+
 target_link_libraries(controller PRIVATE cpprestsdk::cpprest ${OpenSSL_LIBRARIES} ${IPERF_LIBRARY})
