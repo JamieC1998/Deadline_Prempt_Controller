@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include "thread"
+#include <string>
 #include <cpprest/http_listener.h>
 #include <cpprest/http_client.h>
 #include "controller/MasterController.h"
@@ -25,6 +26,7 @@ int main() {
                      std::bind(&MasterController::handle_post, &controller, std::placeholders::_1));
 
     try {
+        volatile int a = 0;
         listener.open().wait();
         std::cout << "Listening for requests at: " << listener.uri().to_string() << std::endl;
 
@@ -32,7 +34,9 @@ int main() {
         work_thread.detach();
         auto network_thread = std::thread(services::NetworkQueueManager::initNetworkCommLoop, networkQueueManager);
         network_thread.detach();
-        while (true);
+        while (true){
+            a;
+        };
     }
     catch (std::exception &e) {
         std::cerr << "something wrong has happened! ;)" << '\n';

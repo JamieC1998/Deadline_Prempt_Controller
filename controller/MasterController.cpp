@@ -9,6 +9,7 @@
 #include "../utils/UtilFunctions/UtilFunctions.h"
 #include <iperf_api.h>
 #include <thread>
+#include <string>
 #include "../Constants/CLIENT_DETAILS.h"
 #include "../utils/IPerfTest/IPerfTest.h"
 #include "../model/data_models/WorkItems/ProcessingItem/LowProcessingItem/LowProcessingItem.h"
