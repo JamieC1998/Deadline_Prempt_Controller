@@ -695,9 +695,11 @@ namespace services {
         std::mt19937 gen(rd());
         try {
             volatile bool wait = false;
-            while (!queueManager->start)
+            while (queueManager->networkQueueManager->getHosts().size() != CLIENT_COUNT) {
                 wait;
-
+                continue;
+            }
+            std::cout << "Beginning Experiment" << std::endl;
             update_network_disc(nullptr, queueManager);
 
             next_discretisation_task =

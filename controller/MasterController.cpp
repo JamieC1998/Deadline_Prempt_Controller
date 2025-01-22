@@ -140,6 +140,7 @@ void MasterController::handle_post(const http_request &message) {
                     std::shared_ptr<model::BaseNetworkCommsModel> baseNetworkCommsModel = std::make_shared<model::BaseNetworkCommsModel>(
                             enums::network_comms_types::initial_experiment_start, std::chrono::system_clock::now());
                     workQueueManager->networkQueueManager->addTask(baseNetworkCommsModel);
+                    std::cout << "SETTING EXPERIMENT START FLAG" << std::endl;
                     workQueueManager->start = true;
                 }
 
