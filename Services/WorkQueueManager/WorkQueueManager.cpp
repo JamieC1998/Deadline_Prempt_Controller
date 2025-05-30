@@ -20,6 +20,9 @@
 #include "../../model/data_models/WorkItems/HaltWorkItem/HaltWorkItem.h"
 #include "../../Constants/FTP_CONFIG.h"
 #include "../../model/data_models/WorkItems/BandwidthUpdate/BandwidthUpdateItem.h"
+#include "../../utils/UtilFunctions/UtilFunctions.h"
+#include <algorithm>
+#include <random>
 
 namespace services {
     std::atomic<int> WorkQueueManager::thread_counter = 0;
@@ -143,6 +146,21 @@ namespace services {
     void low_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
         auto proc_item = std::static_pointer_cast<model::LowProcessingItem>(item);
 
+        auto [dnn_id, host] = proc_item->getDnnIdAndDevice();
+
+        if (proc_item->getDeadline() < std::chrono::system_clock::now()) {
+            web::json::value log;
+            log["dnn_id"] = web::json::value::string(proc_item->getDnnIdAndDevice().first);
+            log["current_time"] = web::json::value::number(
+                    std::chrono::system_clock::now().time_since_epoch().count() * 1000);
+            log["source_device"] = web::json::value::string(host);
+            log["deadline"] = web::json::value::number(proc_item->getDeadline().time_since_epoch().count() * 1000);
+            log["network"] = queueManager->network->convertToJson();
+            queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_ALLOCATION_FAIL, log);
+            queueManager->decrementThreadCounter();
+            return;
+        }
+
         std::unique_lock<std::mutex> net_lock(queueManager->network_lock, std::defer_lock);
 
         std::map<std::string, std::shared_ptr<model::ComputationDevice>> &devices = queueManager->network->devices;
@@ -162,9 +180,6 @@ namespace services {
 
         auto estimated_fin = currentTime + std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME};
 
-
-        auto [dnn_id, host] = proc_item->getDnnIdAndDevice();
-
         net_lock.lock();
         auto device = queueManager->network->devices[host];
         net_lock.unlock();
@@ -176,21 +191,6 @@ namespace services {
         auto window = res.second;
         /* If we cannot allocate a device for even one task we instead create a new allocation request and a halt request */
         if (index == TASK_NOT_FOUND) {
-
-#if DEADLINE_PREMPT
-            std::shared_ptr<model::WorkItem> workItem = std::make_shared<model::HaltWorkItem>(
-                    enums::request_type::halt_req, host, currentTime,
-                    estimated_fin);
-
-            queueManager->add_task(workItem);
-
-            proc_item->setReallocation(true);
-
-            web::json::value halt_log;
-            halt_log["dnn_id"] = web::json::value::string(dnn_id);
-            queueManager->logManager->add_log(enums::LogTypeEnum::HALT_REQUEST, halt_log);
-#endif
-
             web::json::value log;
             log["dnn_id"] = web::json::value::string(proc_item->getDnnIdAndDevice().first);
             log["current_time"] = web::json::value::number(
@@ -199,8 +199,19 @@ namespace services {
             log["deadline"] = web::json::value::number(proc_item->getDeadline().time_since_epoch().count() * 1000);
             log["network"] = queueManager->network->convertToJson();
 
-
 #if DEADLINE_PREMPT
+            std::shared_ptr<model::WorkItem> workItem = std::make_shared<model::HaltWorkItem>(
+                    enums::request_type::halt_req, host, currentTime,
+                    estimated_fin);
+
+            queueManager->add_task(workItem);
+            web::json::value halt_log;
+            halt_log["dnn_id"] = web::json::value::string(dnn_id);
+            halt_log["failed_host"] = web::json::value::string(host);
+            queueManager->logManager->add_log(enums::LogTypeEnum::HALT_REQUEST, halt_log);
+
+            proc_item->setReallocation(true);
+            queueManager->add_task(proc_item);
             queueManager->logManager->add_log(enums::LogTypeEnum::LOW_COMP_PREEMPTION, log);
             queueManager->decrementThreadCounter();
             return;
@@ -240,6 +251,7 @@ namespace services {
                                             : enums::LogTypeEnum::LOW_COMP_ALLOCATION_SUCCESS, log);
         queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
         auto tw = bR->estimated_start_fin;
+
         queueManager->network->devices[host]->resAvailRemoveAndSplit(tw, LOW_COMPLEXITY_CORE_COUNT, 0);
         queueManager->decrementThreadCounter();
     }
@@ -311,14 +323,42 @@ namespace services {
         }
 
         placement_results.erase(sourceHost);
+        std::vector<std::vector<std::pair<int, std::shared_ptr<model::ResourceWindow>>>> placement_matrix;
 
-        for (auto [host, placement_result]: placement_results) {
-            for (auto result: placement_result) {
+        placement_matrix.reserve(placement_results.size());
+
+        for (const auto &[host, placement_result]: placement_results)
+            placement_matrix.push_back(placement_result);
+
+        std::random_device rd;  // Obtain a random number from hardware
+        std::mt19937 g(rd());   // Seed the generator
+
+        std::shuffle(placement_matrix.begin(), placement_matrix.end(), g);  // Shuffle the array
+
+        bool task_count_met = false;
+
+        while (true) {  // Keep looping until we explicitly break
+            bool all_empty = true;  // Track if all vectors are empty
+
+            for (auto &result_vect: placement_matrix) {
+                if (result_vect.empty())
+                    continue;  // Skip empty vectors, but don't break yet
+
+                all_empty = false;  // At least one vector is non-empty
+
+                const auto &result = result_vect.back();
+                result_vect.pop_back();
+
                 if (source_selected_results.size() + offloaded_selected_results.size() != task_count)
                     offloaded_selected_results.push_back(result);
-                else break;
+
+                if (source_selected_results.size() + offloaded_selected_results.size() == task_count) {
+                    task_count_met = true;
+                    break;
+                }
             }
-            if (source_selected_results.size() + offloaded_selected_results.size() == task_count)
+
+            if (all_empty || task_count_met)  // If all vectors were empty, exit the loop
                 break;
         }
 
@@ -471,7 +511,8 @@ namespace services {
 
 
         /* If there are no valid resource windows, exit */
-        if (source_selected_results.empty() && offloaded_selected_results.empty()) {
+        if ((source_selected_results.empty() && offloaded_selected_results.empty()) ||
+            (source_selected_results.size() + offloaded_selected_results.size() < task_count)) {
             web::json::value log;
             log["dnn_id"] = web::json::value::string(processingItem->getDnnId());
             queueManager->logManager->add_log((isReallocation) ? enums::LogTypeEnum::HIGH_COMP_REALLOCATION_FAIL
@@ -557,8 +598,7 @@ namespace services {
         std::vector<std::pair<int, std::shared_ptr<model::HighCompResult>>> haltCandidates;
 
         for (int i = 0; i < tasks.size(); i++) {
-            if ((max(startTime, tasks[i]->estimated_start_fin->start) -
-                 min(finTime, tasks[i]->estimated_start_fin->stop)).count() <= 0 &&
+            if (startTime <= tasks[i]->estimated_start_fin->stop && tasks[i]->estimated_start_fin->start <= finTime &&
                 tasks[i]->getDnnType() == enums::dnn_type::high_comp)
                 haltCandidates.emplace_back(i, std::static_pointer_cast<model::HighCompResult>(tasks[i]));
         }
@@ -575,10 +615,7 @@ namespace services {
         }
 
         if (dnnToPrune == nullptr) {
-            auto regenDataStr = std::make_shared<model::WorkItem>(
-                    std::make_shared<std::vector<std::string>>(std::vector<std::string>{sourceDeviceId}),
-                    enums::request_type::regenerate_structure);
-            queueManager->add_task(regenDataStr);
+            std::cout << "ERROR: NO PREEMPTION TARGET FOUND" << std::endl;
             queueManager->decrementThreadCounter();
             return;
         }
@@ -612,6 +649,7 @@ namespace services {
 
         queueManager->networkQueueManager->addTask(baseNetworkCommsModel);
 
+        std::cout << "PREEMPTED TASK: " << dnnToPrune->getDnnId() << std::endl;
         network_lock.unlock();
         offload_lock.unlock();
 
@@ -639,23 +677,28 @@ namespace services {
         auto host = (*workItem->getHostList())[0];
         auto device = queueManager->network->devices[host];
 
-        if(device->DNNS.empty()){
-            device->generateDefaultResourceConfig(device->getCores(), device->getHostName());
-        }
-        else {
-            std::chrono::time_point<std::chrono::system_clock> ct = std::chrono::system_clock::now();
+        std::chrono::time_point<std::chrono::system_clock> ct = std::chrono::system_clock::now();
 
-            std::vector<int> res_usage_list;
+//        if(device->DNNS.empty())
+        device->generateDefaultResourceConfig(device->getCores(), device->getHostName(), ct);
 
-            for (auto [res_usage, res_config]: device->resource_avail_windows) {
-                res_usage_list.push_back(res_usage);
+        if (!device->DNNS.empty()) {
+
+            for (const auto &dnn: device->DNNS) {
+                device->resAvailRemoveAndSplit(dnn->estimated_start_fin, dnn->getCoreAllocation(), 0);
             }
 
-            for (auto res_usage: res_usage_list) {
-                device->resource_avail_windows[res_usage]->resource_windows = services::convertOverlapToResourceAvailability(
-                        device->DNNS, device->resource_avail_windows[res_usage]->task_res_usage, ct, host,
-                        device->resource_avail_windows[res_usage]->min_processing_time);
-            }
+//            std::vector<int> res_usage_list;
+//
+//            for (const auto &[res_usage, res_config]: device->resource_avail_windows) {
+//                res_usage_list.push_back(res_usage);
+//            }
+//
+//            for (auto res_usage: res_usage_list) {
+//                device->resource_avail_windows[res_usage]->resource_windows = services::convertOverlapToResourceAvailability(
+//                        device->DNNS, device->resource_avail_windows[res_usage]->task_res_usage, ct, host,
+//                        device->resource_avail_windows[res_usage]->min_processing_time);
+//            }
         }
         queueManager->decrementThreadCounter();
     }
@@ -664,6 +707,7 @@ namespace services {
         web::json::value log;
         std::unique_lock<std::mutex> lk(WorkQueueManager::work_queue_lock, std::defer_lock);
         lk.lock();
+        log["type"] = web::json::value::string(utils::request_type_parser(item->getRequestType()));
         WorkQueueManager::logManager->add_log(enums::LogTypeEnum::ADD_WORK_TASK, log);
         WorkQueueManager::work_queue.push_back(item);
 
@@ -699,6 +743,7 @@ namespace services {
                 wait;
                 continue;
             }
+
             std::cout << "Beginning Experiment" << std::endl;
             update_network_disc(nullptr, queueManager);
 

@@ -15,9 +15,10 @@ namespace services {
     public:
         LogManager();
         void add_log(enums::LogTypeEnum logType, web::json::value log);
-        std::string write_log();
+        void write_log();
+        void close_log();
     private:
-        std::vector<web::json::value> log_list;
+        std::vector<std::string> log_list;
         std::mutex log_list_lock;
     };
     std::string fetchEventName(enums::LogTypeEnum logTypeEnum);

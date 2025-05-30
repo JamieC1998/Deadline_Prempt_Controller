@@ -5,6 +5,7 @@
 #include "NetworkQueueManager.h"
 #include "cpprest/http_client.h"
 #include <cpprest/filestream.h>
+#include <thread>
 
 #include <filesystem>
 #include "../../Constants/CLIENT_DETAILS.h"
@@ -39,23 +40,24 @@ namespace services {
                     debug_item = comms_model->getType();
                     switch (comms_model->getType()) {
                         case enums::network_comms_types::halt_req:
-                            haltReq(comms_model, queueManager);
+                            std::thread(&haltReq, comms_model, queueManager).detach();
                             break;
                         case enums::network_comms_types::high_complexity_task_mapping:
-                            highTaskAllocation(comms_model, queueManager);
+                            std::thread(&highTaskAllocation, comms_model, queueManager).detach();
                             break;
                         case enums::network_comms_types::low_complexity_allocation:
-                            lowTaskAllocation(comms_model, queueManager);
+                            std::thread(&lowTaskAllocation, comms_model, queueManager).detach();
                             break;
                         case enums::network_comms_types::initial_experiment_start:
-                            initialise_experiment(queueManager);
+                            std::thread(&initialise_experiment, queueManager).detach();
                             break;
                         case enums::network_comms_types::bandwidth_update:
-                            bandwidthUpdate(comms_model, queueManager);
+                            std::thread(&bandwidthUpdate, comms_model, queueManager).detach();
                             break;
                     }
                 } else
                     lock.unlock();
+
             }
         }
         catch (std::exception &e) {
@@ -100,6 +102,7 @@ namespace services {
 
         auto chosen_host = bw_mod->chosen_host;
 
+
         web::json::value log;
         log["chosen_host"] = web::json::value::string(chosen_host);
         log["comm_time"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -112,6 +115,8 @@ namespace services {
         json::value output;
         std::vector<json::value> val_list;
 
+        output["version"] = web::json::value::number(std::chrono::system_clock::now().time_since_epoch().count());
+
         for (auto host: queueManager->hosts) {
             if (host != chosen_host)
                 val_list.push_back(json::value::string(host));
@@ -119,10 +124,42 @@ namespace services {
         json::value host_list = json::value::array(val_list);
         output["hosts"] = host_list;
 
-        http::client::http_client(baseURI).request(
-                http::methods::POST,
-                "/" +
-                std::string(EXECUTE_BW_TEST), output.serialize());
+        bool success = false;
+
+        while (!success) {
+            try {
+                http::client::http_client client(U(baseURI));
+
+                http::client::http_client(baseURI).request(
+                                http::methods::POST,
+                                "/" +
+                                std::string(EXECUTE_BW_TEST), output.serialize())
+                        .then([&success, baseURI](http::http_response response) {
+                            try {
+                                std::cout << baseURI << "\t-\tStatus code: " << response.status_code() << std::endl;
+
+                                // Check if the response is successful (2xx)
+                                if (response.status_code() >= 200 && response.status_code() < 300) {
+                                    std::cout << "Request succeeded." << std::endl;
+                                    success = true; // Set flag to terminate the loop
+                                } else {
+                                    std::cerr << "Request failed with status code: " << response.status_code()
+                                              << std::endl;
+                                }
+                            } catch (const std::exception &e) {
+                                std::cerr << "Error processing response: " << e.what() << std::endl;
+                            }
+                        }).wait(); // Wait for the task to complete
+            } catch (const std::exception &e) {
+                std::cerr << "Request failed: " << e.what() << std::endl;
+            }
+
+            if (!success) {
+                // Wait before retrying if the request hasn't succeeded
+                std::cerr << "Retrying request..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::microseconds{500});
+            }
+        }
     }
 
     void
@@ -156,7 +193,7 @@ namespace services {
         output["version"] = web::json::value::number(br->getVersion());
 
 
-        if(br->getSrcHost() != br->getAllocatedHost())
+        if (br->getSrcHost() != br->getAllocatedHost())
             std::cout << "";
         std::chrono::time_point<std::chrono::system_clock> comm_start = std::chrono::system_clock::now();
         std::string baseURI = "http://" + hostName + ":" + std::string(HIGH_CLIENT_PORT);
@@ -196,19 +233,21 @@ namespace services {
                                     std::cout << "Request succeeded." << std::endl;
                                     success = true; // Set flag to terminate the loop
                                 } else {
-                                    std::cerr << "Request failed with status code: " << response.status_code() << std::endl;
+                                    std::cerr << "Request failed with status code: " << response.status_code()
+                                              << std::endl;
                                 }
-                            } catch (const std::exception& e) {
+                            } catch (const std::exception &e) {
                                 std::cerr << "Error processing response: " << e.what() << std::endl;
                             }
                         }).wait(); // Wait for the task to complete
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 std::cerr << "Request failed: " << e.what() << std::endl;
             }
 
             if (!success) {
                 // Wait before retrying if the request hasn't succeeded
                 std::cerr << "Retrying request..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::microseconds{500});
             }
         }
 

@@ -42,12 +42,11 @@ namespace model {
             cores), host_name(hostName), id(id_counter) {
         id_counter++;
 
-        generateDefaultResourceConfig(cores, hostName);
+        generateDefaultResourceConfig(cores, hostName, std::chrono::time_point<std::chrono::system_clock>(std::chrono::milliseconds{0}));
 
     }
 
-    void ComputationDevice::generateDefaultResourceConfig(int cores, std::string hostName){
-        std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
+    void ComputationDevice::generateDefaultResourceConfig(int cores, std::string hostName, std::chrono::time_point<std::chrono::system_clock> start_time){
         auto low_comp_res = std::make_shared<model::ResourceAvailabilityList>(
                 LOW_COMPLEXITY_CORE_COUNT, cores / LOW_COMPLEXITY_CORE_COUNT, cores,
                 std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME}, start_time, hostName);
@@ -165,14 +164,6 @@ namespace model {
                         }
                     }
                 }
-
-
-//                if(index == TASK_NOT_FOUND && coreUsage < cores && taskCounter != 0) {
-//                    remaining_coreUsage -= cores;
-//                    std::cout << "SKIP TASK Device: " << ComputationDevice::getHostName() << " Core Usage" << coreUsage << " CONFIG " << cores << " remain " << remaining_coreUsage << std::endl;
-//                    continue;
-//                }
-
 
                 //NEED TO VERIFY WHAT I WAS DOING HERE
                 remaining_coreUsage -= cores;

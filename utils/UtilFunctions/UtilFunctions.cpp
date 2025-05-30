@@ -58,5 +58,24 @@ namespace utils {
         }
         return true;
     }
+
+    std::string request_type_parser(enums::request_type requestType){
+        switch (static_cast<int>(requestType)) {
+            case REQ_TYPE_STATE_UPDATE:
+                return "REQ_TYPE_STATE_UPDATE";
+            case REGENERATE_DATA_STRUCTURE:
+                return "REGENERATE_DATA_STRUCTURE";
+            case BANDWIDTH_UPDATE_ITEM:
+                return "BANDWIDTH_UPDATE_ITEM";
+            case NETWORK_DISC_UPDATE:
+                return "NETWORK_DISC_UPDATE";
+            case HALT_REQ:
+                return "HALT_REQ";
+            case LOW_COMPLEXITY:
+                return "LOW_COMPLEXITY";
+            case HIGH_COMPLEXITY:
+                return "HIGH_COMPLEXITY";
+        }
+    }
 } // utils
 

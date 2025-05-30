@@ -5,45 +5,128 @@
 #include "LogManager.h"
 
 #include <utility>
-#include "../../model/enums/LogTypes.h"
+#include <thread>
 #include "../../Constants/LOG_CONSTANT.h"
+#include <filesystem>
+#include <unistd.h>
 
 namespace services {
     LogManager::LogManager() = default;
 
-    void LogManager::add_log(enums::LogTypeEnum logType, web::json::value log) {
-        std::unique_lock<std::mutex> logLock(LogManager::log_list_lock, std::defer_lock);
-        logLock.lock();
-        std::chrono::time_point<std::chrono::system_clock> log_time = std::chrono::system_clock::now();
-        uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(log_time.time_since_epoch()).count();
-        web::json::value result_json_obj;
-        result_json_obj["event_type"] = web::json::value::string(fetchEventName(logType));
-        result_json_obj["time"] = web::json::value::number(time);
-        result_json_obj["message_content"] = web::json::value(std::move(log));
+    double file_size = 0;
+    bool stop_writing = false;
 
-        log_list.push_back(result_json_obj);
-
-        std::cout << result_json_obj.serialize() << std::endl;
-
-        logLock.unlock();
+    double getStringSizeMB(const std::string &str) {
+        return static_cast<double>(str.size()) / (1024.0 * 1024.0); // Convert bytes to MB
     }
 
-    std::string LogManager::write_log() {
+    void LogManager::add_log(enums::LogTypeEnum logType, web::json::value log) {
+//        std::thread([logType, log = std::move(log), this]() {
+            auto log_time = std::chrono::system_clock::now();
+            std::unique_lock<std::mutex> logLock(LogManager::log_list_lock, std::defer_lock);
+            logLock.lock();
+
+            uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(log_time.time_since_epoch()).count();
+
+            web::json::value result_json_obj;
+            result_json_obj["event_type"] = web::json::value::string(fetchEventName(logType));
+            result_json_obj["time"] = web::json::value::number(time);
+            result_json_obj["message_content"] = web::json::value(log);
+
+            auto serialized_obj = result_json_obj.serialize();
+            log_list.push_back(serialized_obj);
+
+            std::cout << serialized_obj << std::endl;
+
+//            auto stringSizeMB = getStringSizeMB(serialized_obj);
+//            file_size += stringSizeMB;
+//
+//            if (file_size > MAX_LOGGER_SIZE) {
+//                std::thread([this]() {
+//                    LogManager::write_log();
+//                }).detach();
+//            }
+
+            logLock.unlock();
+
+//        }).detach();
+    }
+
+    void ensureDirectoryExists(const std::string &path) {
+        if (!std::filesystem::exists(path)) {
+            std::filesystem::create_directories(path);
+        }
+    }
+
+    void LogManager::write_log() {
         std::unique_lock<std::mutex> logLock(LogManager::log_list_lock, std::defer_lock);
         logLock.lock();
-        web::json::value array = web::json::value::array(LogManager::log_list);
-        auto serialised_result = array.serialize();
-        std::ofstream file(RESULTS_FILE);
-        if (file.is_open())
-        {
-            file << array.serialize();
+
+        if (stop_writing) {
+            logLock.unlock();
+            return;
+        }
+
+        ensureDirectoryExists(RESULTS_DIRECTORY);
+
+        bool file_exists = std::filesystem::exists(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME);
+
+        std::ofstream file;
+
+        if (!file_exists)
+            file.open(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME);
+        else
+            file.open(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME, std::ios::app);
+
+        if (file.is_open()) {
+            if (!file_exists)
+                file << "[";
+            for (const auto &event: log_list) {
+                file << event << "," << "\n";
+            }
             file.close();
         }
 
-        logLock.release();
-        return serialised_result;
+        LogManager::log_list.clear();
+        file_size = 0;
+        logLock.unlock();
     }
     // services
+
+    void LogManager::close_log() {
+        std::unique_lock<std::mutex> logLock(LogManager::log_list_lock, std::defer_lock);
+        logLock.lock();
+        std::ofstream file;
+
+        bool begin = false;
+
+        ensureDirectoryExists(RESULTS_DIRECTORY);
+
+        if (std::filesystem::exists(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME))
+            file.open(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME, std::ios::app);
+        else {
+            file.open(RESULTS_DIRECTORY + "/" + RESULTS_FILE_NAME);
+            begin = true;
+        }
+
+        if (file.is_open()) {
+            if(begin)
+                file << "[";
+            for (int i = 0; i < log_list.size(); i++) {
+                if(i == log_list.size() - 1)
+                    file << log_list[i];
+                else
+                    file << log_list[i] << "," << "\n";
+            }
+
+            file << "]";
+            file.close();
+        }
+
+        stop_writing = true;
+
+        logLock.unlock();
+    }
 
     std::string fetchEventName(enums::LogTypeEnum logTypeEnum) {
         switch (logTypeEnum) {

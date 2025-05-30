@@ -17,7 +17,7 @@ namespace model {
                                                                                                      minProcessingTime) {
         std::string host = hname;
         for (int i = 0; i < deviceTrackCount; i++) {
-                ResourceAvailabilityList::resource_windows.push_back(std::make_shared<model::ResourceWindow>(std::chrono::time_point<std::chrono::system_clock>(std::chrono::milliseconds{0}),
+                ResourceAvailabilityList::resource_windows.push_back(std::make_shared<model::ResourceWindow>(start_time,
                                                                                                              std::chrono::system_clock::time_point::max(),
                                                                                                              host, i,
                                                                                                              taskResUsage));
@@ -73,10 +73,6 @@ namespace model {
                                                     std::chrono::time_point<std::chrono::system_clock> interval_finish,
                                                     std::chrono::time_point<std::chrono::system_clock> start,
                                                     std::chrono::time_point<std::chrono::system_clock> finish) {
-        if (interval_finish < start)
-            return false;
-        if (interval_start < start)
-            interval_start = start;
 
         if (interval_start <= start && interval_finish >= finish) return true;
 

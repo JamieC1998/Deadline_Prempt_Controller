@@ -41,7 +41,7 @@ namespace model {
 
         void resAvailRemoveAndSplit(std::shared_ptr<model::TimeWindow> tw, int coreUsage, int taskCounter);
 
-        void generateDefaultResourceConfig(int cores, std::string hostName);
+        void generateDefaultResourceConfig(int cores, std::string hostName, std::chrono::time_point<std::chrono::system_clock> start_time);
 
     private:
         int id;

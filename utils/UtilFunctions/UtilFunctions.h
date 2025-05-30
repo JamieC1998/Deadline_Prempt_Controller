@@ -22,6 +22,7 @@ namespace utils {
     bool is_allocated(std::string task_id, std::vector<std::string> completed_tasks);
     std::map<std::string, int> generateAllocationMap(std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices);
     bool verify_res_avail(model::ResourceAvailabilityList* resourceAvailabilityList);
+    std::string request_type_parser(enums::request_type requestType);
 } // utils
 
 #endif //CONTROLLER_UTILFUNCTIONS_H

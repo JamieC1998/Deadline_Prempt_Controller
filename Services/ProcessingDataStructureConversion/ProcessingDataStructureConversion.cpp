@@ -21,7 +21,7 @@ namespace services {
 
 //        NEED TO INSERT FOR EACH DEVICE?
         nonOverlappingRanges.push_back(
-                std::make_shared<model::ResourceWindow>(nonOverlappingRanges.back()->timeWindow->stop, std::chrono::time_point<std::chrono::system_clock>(std::chrono::milliseconds(std::numeric_limits<int>::max())), 0));
+                std::make_shared<model::ResourceWindow>(nonOverlappingRanges.back()->timeWindow->stop, std::chrono::system_clock::time_point::max(), 0));
 
         return generateMergedRangesUnderThreshold(nonOverlappingRanges, maxUsage, deviceId, minimumDuration,
                                                   currentTimeMs);

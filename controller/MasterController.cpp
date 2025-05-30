@@ -47,8 +47,8 @@ void MasterController::handle_post(const http_request &message) {
         if (!path.empty()) {
             std::cout << "REQUEST_RECEIVED" << std::endl;
             if (path == LOG_RESULT) {
-                std::string result = MasterController::logManager->write_log();
-                message.reply(status_codes::OK, result).wait();
+                MasterController::logManager->close_log();
+                message.reply(status_codes::OK, "Log Closed").wait();
             } else if (path == HIGH_OFFLOAD_REQUEST) {
                 message.reply(status_codes::OK);
                 enums::request_type requestType = enums::request_type::high_complexity;
@@ -195,7 +195,6 @@ void MasterController::handle_post(const http_request &message) {
             else if(path == BANDWIDTH_UPDATE){
                 message.reply(status_codes::OK);
                 std::string host = message.remote_address();
-                auto str = static_cast<std::string>(body.to_string());
 
                 std::shared_ptr<std::vector<std::string>> hostList = std::make_shared<std::vector<std::string>>(
                         std::initializer_list<std::string>{host});
