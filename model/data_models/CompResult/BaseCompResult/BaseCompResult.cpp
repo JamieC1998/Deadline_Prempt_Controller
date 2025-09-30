@@ -56,30 +56,6 @@ namespace model {
         BaseCompResult::deadline = deadline;
     }
 
-    const std::chrono::time_point<std::chrono::system_clock> &BaseCompResult::getEstimatedStart() const {
-        return estimatedStart;
-    }
-
-    void BaseCompResult::setEstimatedStart(const std::chrono::time_point<std::chrono::system_clock> &estimatedStart) {
-        BaseCompResult::estimatedStart = estimatedStart;
-    }
-
-    const std::chrono::time_point<std::chrono::system_clock> &BaseCompResult::getEstimatedFinish() const {
-        return estimatedFinish;
-    }
-
-    void BaseCompResult::setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish) {
-        BaseCompResult::estimatedFinish = estimatedFinish;
-    }
-
-    const std::shared_ptr<LinkAct> &BaseCompResult::getUploadData() const {
-        return upload_data;
-    }
-
-    void BaseCompResult::setUploadData(const std::shared_ptr<LinkAct> &uploadData) {
-        upload_data = uploadData;
-    }
-
     enums::dnn_type BaseCompResult::getDnnType() const {
         return dnnType;
     }
@@ -93,63 +69,53 @@ namespace model {
                                    const std::chrono::time_point<std::chrono::system_clock> &deadline,
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                                   std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType) : dnn_id(
+                                   enums::dnn_type dnnType) : dnn_id(
             std::move(dnnId)),
-                                                                                                   allocated_host(
-                                                                                                           std::move(
-                                                                                                                   allocatedHost)),
-                                                                                                   srcHost(std::move(
-                                                                                                           srcHost)),
-                                                                                                   core_allocation(
-                                                                                                           coreAllocation),
-                                                                                                   deadline(
-                                                                                                           deadline),
-                                                                                                   estimatedStart(
-                                                                                                           estimatedStart),
-                                                                                                   estimatedFinish(
-                                                                                                           estimatedFinish),
-                                                                                                   upload_data(
-                                                                                                           std::move(
-                                                                                                                   uploadData)),
-                                                                                                   dnnType(dnnType),
-                                                                                                   uniqueDnnId(
-                                                                                                           uniqueDnnIdCounter) { uniqueDnnIdCounter++; }
+                                                              allocated_host(
+                                                                      std::move(
+                                                                              allocatedHost)),
+                                                              srcHost(std::move(
+                                                                      srcHost)),
+                                                              core_allocation(
+                                                                      coreAllocation),
+                                                              deadline(
+                                                                      deadline),
+                                                              estimated_start_fin(
+                                                                      std::make_shared<TimeWindow>(estimatedStart,
+                                                                                                   estimatedFinish)),
+                                                              dnnType(dnnType),
+                                                              uniqueDnnId(
+                                                                      uniqueDnnIdCounter) { uniqueDnnIdCounter++; }
 
     BaseCompResult::BaseCompResult(std::string dnnId, std::string srcHost, int coreAllocation,
                                    const std::chrono::time_point<std::chrono::system_clock> &deadline,
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                                    const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                                   std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType) : dnn_id(
+                                   enums::dnn_type dnnType) : dnn_id(
             std::move(dnnId)),
-                                                                                                   srcHost(
-                                                                                                           std::move(
-                                                                                                                   srcHost)),
-                                                                                                   core_allocation(
-                                                                                                           coreAllocation),
-                                                                                                   deadline(deadline),
-                                                                                                   estimatedStart(
-                                                                                                           estimatedStart),
-                                                                                                   estimatedFinish(
-                                                                                                           estimatedFinish),
-                                                                                                   upload_data(
-                                                                                                           std::move(
-                                                                                                                   uploadData)),
-                                                                                                   dnnType(dnnType),
-                                                                                                   uniqueDnnId(
-                                                                                                           uniqueDnnIdCounter) {
+                                                              srcHost(
+                                                                      std::move(
+                                                                              srcHost)),
+                                                              core_allocation(
+                                                                      coreAllocation),
+                                                              deadline(deadline),
+                                                              estimated_start_fin(
+                                                                      std::make_shared<TimeWindow>(estimatedStart,
+                                                                                                   estimatedFinish)),
+                                                              dnnType(dnnType),
+                                                              uniqueDnnId(
+                                                                      uniqueDnnIdCounter) {
         uniqueDnnIdCounter++;
     }
 
     BaseCompResult::BaseCompResult(std::string dnnId, std::string srcHost,
                                    const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                                   std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType) : dnn_id(std::move(dnnId)),
-                                                                                                   srcHost(std::move(srcHost)),
-                                                                                                   deadline(deadline),
-                                                                                                   upload_data(std::move(
-                                                                                                           uploadData)),
-                                                                                                   dnnType(dnnType),
-                                                                                                   uniqueDnnId(
-                                                                                                           uniqueDnnIdCounter) {
+                                   enums::dnn_type dnnType) : dnn_id(std::move(dnnId)),
+                                                              srcHost(std::move(srcHost)),
+                                                              deadline(deadline),
+                                                              dnnType(dnnType),
+                                                              uniqueDnnId(
+                                                                      uniqueDnnIdCounter) {
         uniqueDnnIdCounter++;
     }
 
@@ -159,14 +125,6 @@ namespace model {
 
     void BaseCompResult::setActualFinish(const std::chrono::time_point<std::chrono::system_clock> &actualFinish) {
         BaseCompResult::actualFinish = actualFinish;
-    }
-
-    const std::shared_ptr<LinkAct> &BaseCompResult::getStateUpdate() const {
-        return state_update;
-    }
-
-    void BaseCompResult::setStateUpdate(const std::shared_ptr<LinkAct> &stateUpdate) {
-        state_update = stateUpdate;
     }
 
 

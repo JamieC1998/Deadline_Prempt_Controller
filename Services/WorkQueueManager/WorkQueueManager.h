@@ -20,7 +20,7 @@ namespace services {
 
     class WorkQueueManager {
     public:
-        explicit WorkQueueManager(std::shared_ptr<LogManager> ptr, std::shared_ptr<NetworkQueueManager> sharedPtr);
+        explicit WorkQueueManager(std::shared_ptr<LogManager> ptr, std::shared_ptr<NetworkQueueManager> sharedPtr, std::map<int, std::pair<float, std::vector<uint64_t>>> load_latency_map);
 
         void add_task(std::shared_ptr<model::WorkItem> item);
 
@@ -40,7 +40,7 @@ namespace services {
 
         double getJitter() const;
 
-        double getBytesPerMillisecond();
+        double getBytesPerMillisecond() const;
 
         void setJitter(double jitter);
 
@@ -50,6 +50,8 @@ namespace services {
         std::map<std::string, std::shared_ptr<model::LowCompResult>> off_low;
         std::map<std::string, std::shared_ptr<model::HighCompResult>> off_high;
         std::shared_ptr<services::LogManager> logManager;
+
+		std::map<int, std::pair<float, std::vector<uint64_t>>> load_latency_map;
     private:
         static std::atomic<int> thread_counter;
         std::vector<std::shared_ptr<model::WorkItem>> current_task;
@@ -59,13 +61,7 @@ namespace services {
         double jitter = 0.0;
     };
 
-    static void state_update_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
-    static void low_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    static void high_comp_allocation_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
-
-    static void halt_call(std::shared_ptr<model::WorkItem> workItem, WorkQueueManager* queueManager);
 
 } // services
 

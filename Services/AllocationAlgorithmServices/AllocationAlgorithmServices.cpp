@@ -12,8 +12,8 @@ namespace services {
         for (auto &task: device->DNNS) {
             /* If we are at the end of the task list */
 
-            if ((max(start_time, task->getEstimatedStart()) -
-                 min(finish_time, task->getEstimatedFinish())).count() <= 0)
+            if ((max(start_time, task->estimated_start_fin->start) -
+                 min(finish_time, task->estimated_start_fin->stop)).count() <= 0)
                 core_usage += task->getCoreAllocation();
         }
 

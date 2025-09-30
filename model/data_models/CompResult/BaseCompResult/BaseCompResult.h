@@ -8,13 +8,14 @@
 #include <string>
 #include "../../../enums/DNN_Type_Enum.h"
 #include "../../LinkAct/LinkAct.h"
+#include "../../TimeWindow/TimeWindow.h"
 
 namespace model {
 
     class BaseCompResult {
         static int uniqueDnnIdCounter;
     public:
-
+        std::shared_ptr<TimeWindow> estimated_start_fin;
 
         explicit BaseCompResult(enums::dnn_type dnnType);
 
@@ -22,18 +23,18 @@ namespace model {
                        int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                       std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType);
+                       enums::dnn_type dnnType);
 
         BaseCompResult(std::string dnnId, std::string srcHost, int coreAllocation,
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                        const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                       std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType
+                       enums::dnn_type dnnType
         );
 
         BaseCompResult(std::string dnnId, std::string srcHost,
                        const std::chrono::time_point<std::chrono::system_clock> &deadline,
-                       std::shared_ptr<LinkAct> uploadData, enums::dnn_type dnnType);
+                       enums::dnn_type dnnType);
 
         int getUniqueDnnId() const;
 
@@ -57,18 +58,6 @@ namespace model {
 
         void setDeadline(const std::chrono::time_point<std::chrono::system_clock> &deadline);
 
-        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedStart() const;
-
-        void setEstimatedStart(const std::chrono::time_point<std::chrono::system_clock> &estimatedStart);
-
-        const std::chrono::time_point<std::chrono::system_clock> &getEstimatedFinish() const;
-
-        void setEstimatedFinish(const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish);
-
-        const std::shared_ptr<LinkAct> &getUploadData() const;
-
-        void setUploadData(const std::shared_ptr<LinkAct> &uploadData);
-
         enums::dnn_type getDnnType() const;
 
         void setDnnType(enums::dnn_type dnnType);
@@ -76,10 +65,6 @@ namespace model {
         const std::chrono::time_point<std::chrono::system_clock> &getActualFinish() const;
 
         void setActualFinish(const std::chrono::time_point<std::chrono::system_clock> &actualFinish);
-
-        const std::shared_ptr<LinkAct> &getStateUpdate() const;
-
-        void setStateUpdate(const std::shared_ptr<LinkAct> &stateUpdate);
 
     private:
         int uniqueDnnId;
@@ -89,13 +74,7 @@ namespace model {
 
         int core_allocation = 0;
         std::chrono::time_point<std::chrono::system_clock> deadline;
-        std::chrono::time_point<std::chrono::system_clock> estimatedStart;
-        std::chrono::time_point<std::chrono::system_clock> estimatedFinish;
-
         std::chrono::time_point<std::chrono::system_clock> actualFinish;
-
-        std::shared_ptr<LinkAct> upload_data;
-        std::shared_ptr<LinkAct> state_update;
         enums::dnn_type dnnType;
     };
 

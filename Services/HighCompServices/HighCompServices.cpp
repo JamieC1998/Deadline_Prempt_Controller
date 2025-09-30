@@ -60,8 +60,8 @@ namespace services {
 
         int core_usage = 0;
         for (auto &task: device->DNNS) {
-            if ((max(expected_start, task->getEstimatedStart()) -
-                 min(expected_finish, task->getEstimatedFinish())).count() <= 0 && dnn_id != task->getDnnId())
+            if ((max(expected_start, task->estimated_start_fin->start) -
+                 min(expected_finish, task->estimated_start_fin->stop)).count() <= 0 && dnn_id != task->getDnnId())
                 core_usage += task->getCoreAllocation();
         }
 

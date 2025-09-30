@@ -9,24 +9,23 @@
 #include <string>
 #include <chrono>
 #include "cpprest/json.h"
+#include "../TimeWindow/TimeWindow.h"
+#include "../../NetCommunicationBase/NetCommunicationBase.h"
 
 namespace model {
 
-    class LinkAct {
-        static int link_activity_counter;
+    class LinkAct: public NetCommunicationBase {
 
     public:
+        std::shared_ptr<TimeWindow> actual_start_fin_time;
+
         LinkAct(bool isMeta, std::pair<std::string, std::string> &hostNames,
-                uint64_t dataSize, std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
+                uint64_t dataSize, std::chrono::time_point<std::chrono::system_clock> start, std::chrono::time_point<std::chrono::system_clock> fin);
 
         LinkAct();
 
         explicit LinkAct(
-                std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> startFinTime);
-
-        int getLinkActivityId();
-
-        void setLinkActivityId(int linkActivityId);
+                std::chrono::time_point<std::chrono::system_clock> start, std::chrono::time_point<std::chrono::system_clock> fin);
 
         bool isMeta() const;
 
@@ -40,29 +39,13 @@ namespace model {
 
         void setDataSize(uint64_t dataSize);
 
-        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &getStartFinTime() const;
-
-        void setStartFinTime(const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &startFinTime);
-
         web::json::value convertToJson();
 
-        const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &
-        getActualStartFinTime() const;
-
-        void setActualStartFinTime(
-                const std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> &actualStartFinTime);
-
     private:
-        int link_activity_id;
         bool is_meta;
         std::pair<std::string, std::string> host_names;
 
         uint64_t data_size;
-        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> start_fin_time;
-
-        std::pair<std::chrono::time_point<std::chrono::system_clock>, std::chrono::time_point<std::chrono::system_clock>> actual_start_fin_time = std::make_pair(std::chrono::time_point<std::chrono::system_clock>(
-                std::chrono::milliseconds{0}), std::chrono::time_point<std::chrono::system_clock>(
-                std::chrono::milliseconds{0}));
     };
 
 } // model

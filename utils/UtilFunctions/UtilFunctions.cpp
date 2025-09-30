@@ -29,10 +29,10 @@ namespace utils {
         return in.tellg();
     }
 
-    void sortLink(std::vector<std::shared_ptr<model::LinkAct>>* network_link) {
+    void sortLink(std::vector<std::shared_ptr<model::NetCommunicationBase>>* network_link) {
         std::sort(network_link->begin(), network_link->end(),
-                  [](const std::shared_ptr<model::LinkAct> &a, const std::shared_ptr<model::LinkAct> &b) {
-                      return a->getStartFinTime().second < b->getStartFinTime().second;
+                  [](const std::shared_ptr<model::NetCommunicationBase> &a, const std::shared_ptr<model::NetCommunicationBase> &b) {
+                      return a->timeWindow->stop < b->timeWindow->stop;
                   });
     }
 
@@ -90,6 +90,44 @@ namespace utils {
         std::stringstream ss;
         ss << std::put_time(&tm, format) << "." << std::setfill('0') << std::setw(3) << ms.count();
         return ss.str();
+    }
+
+    bool verify_res_avail(model::ResourceAvailabilityList* resourceAvailabilityList) {
+        std::vector<int> unique_ids = {};
+        for(const auto & resource_window : resourceAvailabilityList->resource_windows){
+            bool insert = true;
+            for(int unique_id : unique_ids){
+                if(unique_id == resource_window->track_id){
+                    insert = false;
+                }
+            }
+            if(insert && resource_window->timeWindow->stop == std::chrono::system_clock::time_point::max())
+                unique_ids.push_back(resource_window->track_id);
+        }
+        if(unique_ids.size() != resourceAvailabilityList->device_track_count) {
+            std::cout << "";
+            return false;
+        }
+        return true;
+    }
+
+    std::string request_type_parser(enums::request_type requestType){
+        switch (static_cast<int>(requestType)) {
+            case REQ_TYPE_STATE_UPDATE:
+                return "REQ_TYPE_STATE_UPDATE";
+            case REGENERATE_DATA_STRUCTURE:
+                return "REGENERATE_DATA_STRUCTURE";
+            case BANDWIDTH_UPDATE_ITEM:
+                return "BANDWIDTH_UPDATE_ITEM";
+            case NETWORK_DISC_UPDATE:
+                return "NETWORK_DISC_UPDATE";
+            case HALT_REQ:
+                return "HALT_REQ";
+            case LOW_COMPLEXITY:
+                return "LOW_COMPLEXITY";
+            case HIGH_COMPLEXITY:
+                return "HIGH_COMPLEXITY";
+        }
     }
 } // utils
 

@@ -19,6 +19,7 @@ namespace constant{
 /* ENDPOINTS FOR EXPERIMENT MANAGER */
 #define LOW_TASK_ALLOCATION "allocate_low_task"
 #define SET_EXPERIMENT_START "experiment_start"
+#define EXECUTE_BW_TEST "bw_test"
 
 
 #define CLIENT_COUNT 4
@@ -28,6 +29,9 @@ namespace constant{
 
 #define CONTROLLER_HOSTNAME "192.168.1.193"
 #define CONTROLLER_REST_PORT 6502
+
+#define HIGH_COMP_START_TIME_OFFSET_MS 2
+#define LOW_COMP_START_OFFSET_MS 10
 }
 
 #endif //CONTROLLER_CLIENT_DETAILS_H

@@ -11,7 +11,7 @@
 
 namespace model {
 
-    class LowCompResult: public BaseCompResult {
+    class LowCompResult : public BaseCompResult {
 
     public:
 
@@ -19,13 +19,13 @@ namespace model {
                       int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                      const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
+                      enums::dnn_type dnnType);
 
         LowCompResult(const std::string &dnnId, const std::string &srcHost, int coreAllocation,
                       const std::chrono::time_point<std::chrono::system_clock> &deadline,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                       const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                      const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType);
+                      enums::dnn_type dnnType);
 
         web::json::value convertToJson();
 

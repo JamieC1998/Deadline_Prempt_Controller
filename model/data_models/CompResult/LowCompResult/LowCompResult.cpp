@@ -11,16 +11,16 @@ namespace model {
                                  int coreAllocation, const std::chrono::time_point<std::chrono::system_clock> &deadline,
                                  const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                                  const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                                 const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType) : BaseCompResult(
-            dnnId, allocatedHost, srcHost, coreAllocation, deadline, estimatedStart, estimatedFinish, uploadData,
+                                 enums::dnn_type dnnType) : BaseCompResult(
+            dnnId, allocatedHost, srcHost, coreAllocation, deadline, estimatedStart, estimatedFinish,
             dnnType) {}
 
     LowCompResult::LowCompResult(const std::string &dnnId, const std::string &srcHost, int coreAllocation,
                                  const std::chrono::time_point<std::chrono::system_clock> &deadline,
                                  const std::chrono::time_point<std::chrono::system_clock> &estimatedStart,
                                  const std::chrono::time_point<std::chrono::system_clock> &estimatedFinish,
-                                 const std::shared_ptr<LinkAct> &uploadData, enums::dnn_type dnnType) : BaseCompResult(
-            dnnId, srcHost, coreAllocation, deadline, estimatedStart, estimatedFinish, uploadData, dnnType) {}
+                                 enums::dnn_type dnnType) : BaseCompResult(
+            dnnId, srcHost, coreAllocation, deadline, estimatedStart, estimatedFinish, dnnType) {}
 
     web::json::value LowCompResult::convertToJson() {
         web::json::value result;
@@ -29,10 +29,9 @@ namespace model {
         result["source_host"] = web::json::value::string(LowCompResult::getSrcHost());
         result["core_allocation"] = web::json::value::number(LowCompResult::getCoreAllocation());
         result["deadline"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::getDeadline().time_since_epoch()).count());
-        result["estimated_start"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::getEstimatedStart().time_since_epoch()).count());
-        result["estimated_finish"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::getEstimatedFinish().time_since_epoch()).count());
+        result["estimated_start"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::estimated_start_fin->start.time_since_epoch()).count());
+        result["estimated_finish"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::estimated_start_fin->stop.time_since_epoch()).count());
         result["actual_finish"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(LowCompResult::getActualFinish().time_since_epoch()).count());
-        result["upload_data"] = LowCompResult::getUploadData()->convertToJson();
         result["dnn_type"] = web::json::value::string(std::string ("low_comp"));
         return result;
     }

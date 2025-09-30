@@ -12,6 +12,7 @@ namespace constants {
 #define DEADLINE_VIOLATED "/deadline_violation"
 #define STATE_UPDATE "/state_update"
 #define LOG_RESULT "/log_result"
+#define BANDWIDTH_UPDATE "/bandwidth_update"
 }
 
 #endif //CONTROLLER_CONTROLLERREQUESTPATHS_H
