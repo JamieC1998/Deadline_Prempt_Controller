@@ -90,6 +90,7 @@ namespace services {
 
     /*Function receives alow complexity DNN allocation request*/
     void low_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+        std::chrono::time_point<std::chrono::system_clock> latency_measure_start = std::chrono::system_clock::now();
         auto proc_item = std::static_pointer_cast<model::LowProcessingItem>(item);
 
         std::unique_lock<std::mutex> net_lock(queueManager->network_lock, std::defer_lock);
@@ -206,6 +207,15 @@ namespace services {
 
             bR->setAllocatedHost(host);
 
+            std::chrono::time_point<std::chrono::system_clock> latency_finish = std::chrono::system_clock::now();
+            auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(latency_finish - latency_measure_start).count();
+            web::json::value latency_log;
+
+            latency_log[bR->getDnnId()] = web::json::value::number(time_diff);
+            latency_log["type"] = web::json::value::string("low");
+
+            queueManager->logManager->add_log(enums::LogTypeEnum::LATENCY_LOG, latency_log);
+
             std::shared_ptr<model::LowComplexityAllocationComms> baseNetworkCommsModel =
                     std::make_shared<model::LowComplexityAllocationComms>(
                             enums::network_comms_types::low_complexity_allocation,
@@ -227,6 +237,9 @@ namespace services {
 
 
     void high_comp_allocation_call(std::shared_ptr<model::WorkItem> item, WorkQueueManager *queueManager) {
+        web::json::value latency_log_map;
+        std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
+
         auto processingItem = std::static_pointer_cast<model::HighProcessingItem>(item);
         bool isReallocation = processingItem->isReallocation();
 
@@ -381,6 +394,10 @@ namespace services {
                     task->setEstimatedFinish(finish_time_on_device);
                 }
 
+                std::chrono::time_point<std::chrono::system_clock> latency_measurement_finish_time = std::chrono::system_clock::now();
+                web::json::value task_latency_item;
+                auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(latency_measurement_finish_time - start_time).count();
+
                 /* If the current allocation does not satisfy deadline,
                  * remove link tasks from link and task from allocated host
                  * so that we can continue to attempt to allocate */
@@ -449,6 +466,8 @@ namespace services {
 
                     allocated_tasks.push_back(task->getDnnId());
                 }
+
+                latency_log_map[task->getDnnId()] =  web::json::value::number(time_diff);
             }
 
             if (allocated_tasks.size() == processingItem->getDnnIds().size())
@@ -471,6 +490,9 @@ namespace services {
                                                   log);
             }
         }
+
+        latency_log_map["type"] = web::json::value::string("high");
+        queueManager->logManager->add_log(enums::LogTypeEnum::LATENCY_LOG, latency_log_map);
         netlock.unlock();
         offload_lock.unlock();
         queueManager->decrementThreadCounter();
