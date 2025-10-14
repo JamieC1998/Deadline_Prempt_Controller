@@ -208,7 +208,7 @@ namespace services {
             bR->setAllocatedHost(host);
 
             std::chrono::time_point<std::chrono::system_clock> latency_finish = std::chrono::system_clock::now();
-            auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(latency_finish - latency_measure_start).count();
+            auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(latency_finish - latency_measure_start).count();
             web::json::value latency_log;
 
             latency_log[bR->getDnnId()] = web::json::value::number(time_diff);
@@ -396,7 +396,7 @@ namespace services {
 
                 std::chrono::time_point<std::chrono::system_clock> latency_measurement_finish_time = std::chrono::system_clock::now();
                 web::json::value task_latency_item;
-                auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(latency_measurement_finish_time - start_time).count();
+                auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(latency_measurement_finish_time - start_time).count();
 
                 /* If the current allocation does not satisfy deadline,
                  * remove link tasks from link and task from allocated host
