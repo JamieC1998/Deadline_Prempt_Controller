@@ -399,7 +399,7 @@ namespace services {
                 web::json::value task_latency_item;
                 auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(latency_measurement_finish_time - start_time).count();
 
-                std::cout << (latency_measurement_finish_time - start_time).count() << std::chrono::duration_cast<std::chrono::microseconds>(latency_measurement_finish_time - start_time).count() << std::endl;
+                std::cout << (latency_measurement_finish_time - start_time).count() << " - " << std::chrono::duration_cast<std::chrono::microseconds>(latency_measurement_finish_time - start_time).count() << std::endl;
                 /* If the current allocation does not satisfy deadline,
                  * remove link tasks from link and task from allocated host
                  * so that we can continue to attempt to allocate */
