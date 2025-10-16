@@ -23,7 +23,7 @@ namespace services {
 
         log_list.push_back(result_json_obj);
 
-        std::cout << result_json_obj.serialize() << std::endl;
+        //std::cout << result_json_obj.serialize() << std::endl;
 
         logLock.unlock();
     }
