@@ -16,6 +16,7 @@
 #include "../../model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h"
 #include "../../Constants/CLIENT_DETAILS.h"
 #include "../ProfilerMain/ProfilerMain.h"
+#include "../../utils/ProfilerUtils/ProfilerUtils.h"
 
 namespace services {
 	std::atomic<int> WorkQueueManager::thread_counter = 0;
@@ -89,7 +90,7 @@ namespace services {
 					if (queueManager->current_task.front()->getRequestType() == enums::request_type::low_complexity || queueManager->current_task.front()->getRequestType() == enums::request_type::high_complexity) {
 						std::chrono::
 						time_point<std::chrono::system_clock> deadline;
-						auto load = services::numberOfTasksInNetwork(queueManager->network);
+						auto load = utils::numberOfTasksInNetwork(queueManager->network);
 
 						auto time_to_uint64_t = static_cast<uint64_t>(std::llround(
 								queueManager->load_latency_map[load].first));

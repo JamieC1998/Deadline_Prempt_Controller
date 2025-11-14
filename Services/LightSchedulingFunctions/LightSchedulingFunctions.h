@@ -83,7 +83,7 @@ namespace services {
                                           std::chrono::time_point<std::chrono::system_clock> last_time_of_reasoning,
                                           std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices);
 
-    void light_sched_regenerate_res_data_structure(std::string host, std::shared_ptr<model::ComputationDevice> device);
+    std::shared_ptr<model::ComputationDevice> light_sched_regenerate_res_data_structure(std::string host, std::shared_ptr<model::ComputationDevice> device);
 } // services
 
 #endif //CONTROLLER_LIGHTSCHEDULINGFUNCTIONS_H

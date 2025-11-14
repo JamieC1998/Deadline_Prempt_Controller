@@ -63,7 +63,6 @@ namespace services {
 			return std::make_tuple(ResultState::deadline_violation, nullptr, nullptr);
 		}
 
-
 		uint64_t data_size_bytes = LOW_TASK_SIZE;
 		/* -------------------------------------------------------------------------- */
 		std::chrono::time_point<std::chrono::system_clock> currentTime = model::TimeSourceSingleton::getTime() +
@@ -75,7 +74,6 @@ namespace services {
 
 		auto estimated_fin = currentTime + std::chrono::milliseconds{LOW_COMPLEXITY_PROCESSING_TIME};
 
-
 		auto res = device->resource_avail_windows[1]->containmentQuery(
 				currentTime, estimated_fin);
 
@@ -84,7 +82,7 @@ namespace services {
 
 		/* If we cannot allocate a device for even one task we instead create a new allocation request and a halt request */
 		if (index == TASK_NOT_FOUND)
-			return std::make_tuple(ResultState::no_resources, window->timeWindow, nullptr);
+			return std::make_tuple(ResultState::no_resources, std::make_shared<model::TimeWindow>(currentTime, estimated_fin), nullptr);
 
 		/* For each allocated low comp task we create a Result object
 		 * the key is the dnn_id*/
@@ -98,7 +96,8 @@ namespace services {
 		bR->setAllocatedHost(host);
 
 		device->DNNS.push_back(bR);
-		device->resAvailRemoveAndSplit(window->timeWindow, LOW_COMPLEXITY_CORE_COUNT, 0);
+
+		device->resAvailRemoveAndSplit(bR->estimated_start_fin, LOW_COMPLEXITY_CORE_COUNT, 0);
 
 		return std::make_tuple((isReallocation) ? ResultState::post_preemp_succ : ResultState::success,
 							   window->timeWindow, bR);
@@ -390,9 +389,9 @@ namespace services {
 		return resultVector;
 	}
 
-	void light_sched_regenerate_res_data_structure(std::string host, std::shared_ptr<model::ComputationDevice> device) {
+	std::shared_ptr<model::ComputationDevice> light_sched_regenerate_res_data_structure(std::string host, std::shared_ptr<model::ComputationDevice> device) {
 
-		std::chrono::time_point<std::chrono::system_clock> ct = std::chrono::system_clock::now();
+		std::chrono::time_point<std::chrono::system_clock> ct = model::TimeSourceSingleton::getTime();
 
 		device->generateDefaultResourceConfig(device->getCores(), device->getHostName(), ct);
 
@@ -402,5 +401,7 @@ namespace services {
 				device->resAvailRemoveAndSplit(dnn->estimated_start_fin, dnn->getCoreAllocation(), 0);
 			}
 		}
+
+		return device;
 	}
 } // services

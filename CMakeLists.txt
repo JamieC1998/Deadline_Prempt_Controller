@@ -139,6 +139,14 @@ add_executable(controller
         model/data_models/WorkItems/BandwidthUpdate/BandwidthUpdateItem.cpp
         model/data_models/WorkItems/BandwidthUpdate/BandwidthUpdateItem.h
         model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.cpp
-        model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h)
+        model/data_models/NetworkCommsModels/BandwidthTestCommsModel/BandwidthTestCommsModel.h
+        Services/ProfilerMain/HeavyProfilerFunctions/HeavyProfilerFunctions.cpp
+        Services/ProfilerMain/HeavyProfilerFunctions/HeavyProfilerFunctions.h
+        utils/ProfilerUtils/ProfilerUtils.cpp
+        utils/ProfilerUtils/ProfilerUtils.h
+        utils/ProfilerUtils/ProfilerUtils.cpp
+        utils/ProfilerUtils/ProfilerUtils.h
+        Services/ProfilerMain/LightProfilerFunctions/LightProfilerFunctions.cpp
+        Services/ProfilerMain/LightProfilerFunctions/LightProfilerFunctions.h)
 
 target_link_libraries(controller PRIVATE cpprestsdk::cpprest ${OpenSSL_LIBRARIES} ${IPERF_LIBRARY})

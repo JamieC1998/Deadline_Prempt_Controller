@@ -302,8 +302,8 @@ namespace services {
         std::vector<std::pair<int, std::shared_ptr<model::HighCompResult>>> haltCandidates;
 
         for (int i = 0; i < deviceTaskLoad.size(); i++) {
-            if ((max(startTime, deviceTaskLoad[i]->estimated_start_fin->start) -
-                 min(finTime, deviceTaskLoad[i]->estimated_start_fin->stop)).count() <= 0)
+            if (startTime <= deviceTaskLoad[i]->estimated_start_fin->stop && deviceTaskLoad[i]->estimated_start_fin->start <= finTime &&
+                deviceTaskLoad[i]->getDnnType() == enums::dnn_type::high_comp)
                 haltCandidates.emplace_back(i, std::static_pointer_cast<model::HighCompResult>(deviceTaskLoad[i]));
         }
 
@@ -316,6 +316,10 @@ namespace services {
                 if (dnnToPrune->getDeadline() < haltCandidates[i].second->getDeadline())
                     dnnToPrune = haltCandidates[i].second;
             }
+        }
+
+        if (dnnToPrune == nullptr) {
+           return std::make_tuple(nullptr, deviceTaskLoad, copyList, off_total, off_high, 0);
         }
 
         auto dnn_id = dnnToPrune->getDnnId();

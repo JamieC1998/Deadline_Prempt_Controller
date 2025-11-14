@@ -24,6 +24,7 @@ namespace utils {
     std::map<std::string, int> generateAllocationMap(std::map<std::string, std::shared_ptr<model::ComputationDevice>> devices);
     bool verify_res_avail(model::ResourceAvailabilityList* resourceAvailabilityList);
     std::string request_type_parser(enums::request_type requestType);
+    std::vector<std::string> split(const std::string& s, const std::string& delimiter);
 } // utils
 
 #endif //CONTROLLER_UTILFUNCTIONS_H

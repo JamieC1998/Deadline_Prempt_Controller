@@ -33,7 +33,7 @@ namespace services {
         logLock.lock();
         web::json::value array = web::json::value::array(LogManager::log_list);
         auto serialised_result = array.serialize();
-        std::ofstream file(RESULTS_FILE);
+        std::ofstream file(constant::RESULTS_FILE);
         if (file.is_open())
         {
             file << array.serialize();

@@ -433,6 +433,8 @@ namespace services {
 		queueManager->setAverageBitsPerSecond(new_bps);
 		queueManager->setJitter(new_jitter);
 
+		queueManager->add_task(std::make_shared<model::WorkItem>(enums::request_type::network_disc));
+
 		queueManager->decrementThreadCounter();
 	}
 

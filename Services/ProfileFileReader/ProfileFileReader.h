@@ -12,7 +12,7 @@ namespace services {
 
     web::json::value read_experiment_log(const std::string& profileInputPath);
 
-	std::pair<std::vector<std::string>, std::vector<std::shared_ptr<model::SimEvent>>> parse_experiment_log(web::json::value jObj);
+	std::pair<std::vector<std::string>, std::vector<std::shared_ptr<model::SimEvent>>> parse_experiment_log(web::json::value jObj, int deviceCount);
 
 } // services
 

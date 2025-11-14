@@ -42,7 +42,7 @@ namespace model {
             cores), host_name(std::move(hostName)), id(id_counter){
         id_counter++;
 
-        generateDefaultResourceConfig(cores, hostName, std::chrono::time_point<std::chrono::system_clock>(std::chrono::milliseconds{0}));
+        generateDefaultResourceConfig(cores, this->host_name, std::chrono::time_point<std::chrono::system_clock>(std::chrono::milliseconds{0}));
     }
 
     void ComputationDevice::generateDefaultResourceConfig(int cores, std::string hostName, std::chrono::time_point<std::chrono::system_clock> start_time){
@@ -79,7 +79,9 @@ namespace model {
 
     void ComputationDevice::resAvailRemoveAndSplit(std::shared_ptr<model::TimeWindow> tw, int coreUsage, int taskCounter) {
 
+#ifndef NDEBUG
         std::cout << "TASK WINDOW REQ: " << tw->toString() << std::endl;
+        #endif
         for (const auto& avail_pair: ComputationDevice::resource_avail_windows) {
             auto cores = avail_pair.first;
             auto resAvailConfig = avail_pair.second;
@@ -87,7 +89,9 @@ namespace model {
             int remaining_coreUsage = coreUsage;
             std::vector<std::shared_ptr<model::ResourceWindow>> res_windows;
 
+#ifndef NDEBUG
             std::cout << "\nBEFORE: " << resAvailConfig->toString() << std::endl;
+            #endif
 
             int track_id = 0;
             while (remaining_coreUsage > 0) {
@@ -149,9 +153,13 @@ namespace model {
                 remaining_coreUsage -= cores;
                 track_id++;
             }
+
+#ifndef NDEBUG
             std::cout << "\nAFTER: "
                       << resAvailConfig->toString()
                       << std::endl;
+#endif
+
             if(!res_windows.empty())
                 ComputationDevice::resource_avail_windows[cores]->insert(res_windows);
 

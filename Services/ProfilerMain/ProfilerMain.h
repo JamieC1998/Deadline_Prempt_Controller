@@ -18,7 +18,7 @@
 namespace services {
 
 	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>>
-	profiler_event_loop(std::vector<std::string> state_u_list, std::vector<std::shared_ptr<model::SimEvent>> e_queue);
+	profiler_event_loop(std::vector<std::string> state_u_list, std::vector<std::shared_ptr<model::SimEvent>> e_queue, bool isLight);
 
 	std::shared_ptr<model::SimEvent>
 	handle_inbound(const std::shared_ptr<model::SimEvent> &event, uint64_t &bw_bytes, std::shared_ptr<model::Network> network,
@@ -32,9 +32,7 @@ namespace services {
 				std::map<std::string, std::shared_ptr<model::LowCompResult>> &off_low,
 				std::map<std::string, std::shared_ptr<model::HighCompResult>> &off_high, uint64_t bw_bytes,
 				std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>> &resultMap,
-				std::vector<std::string> state_u_list);
-
-	int numberOfTasksInNetwork(std::shared_ptr<model::Network> network);
+				std::vector<std::string> state_u_list, bool isLight);
 
 	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>>
 	printResults(std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>> resultMap);
