@@ -6,6 +6,7 @@
 #define CONTROLLER_HALTWORKITEM_H
 
 #include "../BaseWorkItem/WorkItem.h"
+#include <chrono>
 
 namespace model {
 
