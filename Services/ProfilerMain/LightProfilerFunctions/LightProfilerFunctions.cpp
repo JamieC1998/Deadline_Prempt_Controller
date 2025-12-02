@@ -19,7 +19,7 @@ namespace services {
 
 	std::tuple<std::map<std::string, std::shared_ptr<model::HighCompResult> >, std::map<std::string, std::shared_ptr<model::LowCompResult> >, std::map<
 			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>,
-			enums::dnn_type> >
+			enums::dnn_type, int> >
 		, std::vector<std::shared_ptr<model::SimEvent> >, std::shared_ptr<model::Network> >
 	light_work_function_low_comp(uint64_t bw_bytes, std::shared_ptr<model::Network> network, std::string sourceHost,
 	                             std::shared_ptr<model::WorkQueueEvent> w_event,
@@ -27,12 +27,16 @@ namespace services {
 	                             std::map<std::string, std::shared_ptr<model::BaseCompResult> > off_total,
 	                             std::map<std::string, std::shared_ptr<model::LowCompResult> > off_low,
 	                             std::map<std::string, std::shared_ptr<model::HighCompResult> > off_high,
-	                             std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > resultMap,
-	                             std::shared_ptr<model::LowProcessingItem> l_proc) {
+	                             std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > resultMap,
+	                             std::shared_ptr<model::LowProcessingItem> l_proc,
+	                             int e_queue_size) {
+		auto latency_measure_start = std::chrono::system_clock::now();
 		auto target_device = network->devices[sourceHost];
 		auto [result_state, allocated_time_window, resulting_task] = services::light_sched_low_comp_allocation_call(
 			l_proc->getDnnIdAndDevice().first, sourceHost, l_proc->getDeadline(), network->devices,
 			target_device, l_proc->isReallocation(), bw_bytes);
+
+		auto latency_measure_end = std::chrono::system_clock::now();
 
 		if (result_state == ResultState::success || result_state == ResultState::post_preemp_succ) {
 			auto bR = resulting_task;
@@ -54,11 +58,12 @@ namespace services {
 			if (resultMap.find(bR->getDnnId()) == resultMap.end()) {
 				auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(),
 				                                              std::chrono::system_clock::now());
-				resultMap[bR->getDnnId()] = std::make_tuple(-1, tasks_in_network, tw, enums::dnn_type::low_comp);
+				resultMap[bR->getDnnId()] = std::make_tuple(-1, tasks_in_network, tw, enums::dnn_type::low_comp, e_queue_size);
 			} else {
-				auto [beginningTaskCount, finTaskCount, window, dnnType] = resultMap[bR->getDnnId()];
-				window->stop = std::chrono::system_clock::now();
-				resultMap[bR->getDnnId()] = std::make_tuple(beginningTaskCount, tasks_in_network, window, dnnType);
+				auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[bR->getDnnId()];
+				window->start = latency_measure_start;
+				window->stop = latency_measure_end;
+				resultMap[bR->getDnnId()] = std::make_tuple(beginningTaskCount, tasks_in_network, window, dnnType, e_queue_size);
 			}
 		} else {
 			auto preemption_request = std::make_shared<model::HaltWorkItem>(enums::request_type::halt_req,
@@ -88,7 +93,7 @@ namespace services {
 
 	std::tuple<std::map<std::string, std::shared_ptr<model::HighCompResult> >, std::map<std::string, std::shared_ptr<model::LowCompResult> >, std::map<
 			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>,
-			enums::dnn_type> >
+			enums::dnn_type, int> >
 		, std::vector<std::shared_ptr<model::SimEvent> >, std::shared_ptr<model::Network>, std::vector<std::shared_ptr<model::NetCommunicationBase> >, std::map<
 			std::string, std::shared_ptr<model::ComputationDevice> > >
 	light_work_function_high_comp(std::map<std::string, std::shared_ptr<model::ComputationDevice> > copyDeviceWorkloadList,
@@ -99,8 +104,11 @@ namespace services {
 	                              std::vector<std::shared_ptr<model::NetCommunicationBase> > copyList, std::string sourceHost, uint64_t bw_bytes,
 	                              std::vector<std::string> state_u_list,
 	                              std::shared_ptr<model::Network> network,
-	                              std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > resultMap,
-	                              std::vector<std::shared_ptr<model::SimEvent> > resultVect) {
+	                              std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > resultMap,
+	                              std::vector<std::shared_ptr<model::SimEvent> > resultVect,
+	                              int e_queue_size) {
+
+	auto latency_measure_start = std::chrono::system_clock::now();
 		std::vector<std::tuple<ResultState, std::string, std::shared_ptr<model::HighCompResult> > > result = services::light_sched_high_comp_allocation_call(
 			h_proc->isReallocation(),
 			h_proc->getDnnIds(),
@@ -111,6 +119,11 @@ namespace services {
 			h_proc->getDeadline(),
 			network->last_time_of_reasoning,
 			network->devices);
+
+		std::vector<std::chrono::time_point<std::chrono::system_clock>> latency_times_end;
+
+		for (const auto& result_item: result)
+			latency_times_end.push_back(std::chrono::system_clock::now());
 
 		std::vector<std::shared_ptr<model::HighCompResult> > resultItems;
 
@@ -161,16 +174,18 @@ namespace services {
 			device->resAvailRemoveAndSplit(task->estimated_start_fin, task->getCoreAllocation(), 0);
 		}
 
-		for (const auto &task: resultItems) {
+		for (int i = 0; i < resultItems.size(); i++) {
+			auto task = resultItems[i];
 			int tasks_in_network = utils::numberOfTasksInNetwork(network);
 			if (resultMap.find(task->getDnnId()) == resultMap.end()) {
 				auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(),
 				                                              std::chrono::system_clock::now());
-				resultMap[task->getDnnId()] = std::make_tuple(-1, tasks_in_network, tw, enums::dnn_type::high_comp);
+				resultMap[task->getDnnId()] = std::make_tuple(-1, tasks_in_network, tw, enums::dnn_type::high_comp, e_queue_size);
 			} else {
-				auto [beginningTaskCount, finTaskCount, window, dnnType] = resultMap[task->getDnnId()];
-				window->stop = std::chrono::system_clock::now();
-				resultMap[task->getDnnId()] = std::make_tuple(beginningTaskCount, tasks_in_network, window, dnnType);
+				auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[task->getDnnId()];
+				window->start = latency_measure_start;
+				window->stop = latency_times_end[i];
+				resultMap[task->getDnnId()] = std::make_tuple(beginningTaskCount, tasks_in_network, window, dnnType, e_queue_size);
 			}
 		}
 		return std::make_tuple(off_high, off_low, off_total, resultMap, resultVect, network, copyList, copyDeviceWorkloadList);

@@ -11,10 +11,12 @@
 #include "Constants/LOG_CONSTANT.h"
 #include "Services/ProfilerMain/ProfilerMain.h"
 #include "model/data_models/IsProfilingSingleton/IsProfilingSingleton.h"
+#include "utils/UtilFunctions/UtilFunctions.h"
 
 int main(int argc, char *argv[]) {
 	int device_count = 100;
 	bool profile_light = true;
+	std::string profiler_light_or_heavy = "false";
 
 	if (argc > 6) {
 		device_count = std::stoi(argv[1]);
@@ -22,7 +24,7 @@ int main(int argc, char *argv[]) {
 		std::string simulator_input_path = argv[3];
 		std::string simulator_output_path = argv[4];
 		std::string system_output_path = argv[5];
-		std::string profiler_light_or_heavy = argv[6];
+		profiler_light_or_heavy = argv[6];
 
 		PROFILE_RESULT_FILE = simulator_output_path;
 		PROFILE_INPUT_FILE = simulator_input_path;
@@ -37,11 +39,11 @@ int main(int argc, char *argv[]) {
 		PROFILE_INPUT_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/weighted_4_slice_scheduler_preempt_old_bw.json";
 		RESULTS_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/result_log.json";
 		PROFILE_RESULT_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/heavy_profile_result.json";
-		profile_light = false;
+		profile_light = (profiler_light_or_heavy == "true");
 	}
 
-	std::cout << "Running with the following config - ./controller " << std::to_string(device_count) << " " << CONTROLLER_HOSTNAME << " " <<
-				PROFILE_INPUT_FILE << " " << PROFILE_RESULT_FILE << " " << RESULTS_FILE << " false" << std::endl;
+	std::cout << utils::debugTimePointToString(std::chrono::system_clock::now()) << " - Running with the following config - ./controller " << std::to_string(device_count) << " " << CONTROLLER_HOSTNAME << " " <<
+				PROFILE_INPUT_FILE << " " << PROFILE_RESULT_FILE << " " << RESULTS_FILE << " " << profiler_light_or_heavy << std::endl;
 
 	try {
 		auto jsonObj = services::read_experiment_log(PROFILE_INPUT_FILE);
@@ -51,7 +53,7 @@ int main(int argc, char *argv[]) {
 		auto profile_map = services::profiler_event_loop(state_u_list, simEventList, profile_light);
 		auto load_transformation = services::profile_data_transform(profile_map);
 
-		services::writeTransformedLoadResults(load_transformation);
+		services::writeTransformedLoadResults(load_transformation, PROFILE_RESULT_FILE);
 
 		std::shared_ptr<services::LogManager> logManager = std::make_shared<services::LogManager>();
 		//		std::shared_ptr<services::NetworkQueueManager> networkQueueManager = std::make_shared<services::NetworkQueueManager>(

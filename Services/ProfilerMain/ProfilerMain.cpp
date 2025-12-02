@@ -24,7 +24,7 @@
 namespace services {
 	std::shared_ptr<model::SimEvent>
 	handle_inbound(const std::shared_ptr<model::SimEvent> &event, uint64_t &bw_bytes, std::shared_ptr<model::Network> network,
-	               std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > &resultMap) {
+	               std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > &resultMap, int e_queue_size) {
 		std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 
 		std::shared_ptr<model::InboundEvent> i_event = std::static_pointer_cast<model::InboundEvent>(event);
@@ -44,11 +44,11 @@ namespace services {
 				if (resultMap.find(dnn_id) == resultMap.end()) {
 					auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(),
 					                                              std::chrono::system_clock::now());
-					resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::high_comp);
+					resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::high_comp, e_queue_size);
 				} else {
-					auto [beginningTaskCount, finTaskCount, window, dnnType] = resultMap[dnn_id];
+					auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[dnn_id];
 					window->start = std::chrono::system_clock::now();
-					resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType);
+					resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType, e_queue_size);
 				}
 			}
 
@@ -76,11 +76,11 @@ namespace services {
 			int tasks_in_network = utils::numberOfTasksInNetwork(network);
 			if (resultMap.find(dnn_id) == resultMap.end()) {
 				auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(), std::chrono::system_clock::now());
-				resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::low_comp);
+				resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::low_comp, e_queue_size);
 			} else {
-				auto [beginningTaskCount, finTaskCount, window, dnnType] = resultMap[dnn_id];
+				auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[dnn_id];
 				window->start = std::chrono::system_clock::now();
-				resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType);
+				resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType, e_queue_size);
 			}
 
 			auto res = std::make_shared<model::WorkQueueEvent>();
@@ -131,9 +131,10 @@ namespace services {
 	            std::map<std::string, std::shared_ptr<model::BaseCompResult> > &off_total,
 	            std::map<std::string, std::shared_ptr<model::LowCompResult> > &off_low,
 	            std::map<std::string, std::shared_ptr<model::HighCompResult> > &off_high, uint64_t bw_bytes,
-	            std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > &resultMap,
+	            std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > &resultMap,
 	            std::vector<std::string> state_u_list,
-	            bool isLight) {
+	            bool isLight,
+	            int e_queue_size) {
 		std::vector<std::shared_ptr<model::SimEvent> > resultVect;
 		std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 
@@ -166,7 +167,7 @@ namespace services {
 
 				if (isLight) {
 					auto [o_high, o_low, o_total, rMap, rVect, ntwrk] = services::light_work_function_low_comp(
-						bw_bytes, network, sourceHost, w_event, resultVect, event, off_total, off_low, off_high, resultMap, l_proc);
+						bw_bytes, network, sourceHost, w_event, resultVect, event, off_total, off_low, off_high, resultMap, l_proc, e_queue_size);
 
 					off_high = o_high;
 					off_low = o_low;
@@ -176,7 +177,7 @@ namespace services {
 					network = ntwrk;
 				} else {
 					auto [o_high, o_low, o_total, rMap, rVect, ntwrk] = services::work_function_low_comp(
-						bw_bytes, network, sourceHost, w_event, resultVect, event, off_total, off_low, off_high, resultMap);
+						bw_bytes, network, sourceHost, w_event, resultVect, event, off_total, off_low, off_high, resultMap, e_queue_size);
 
 					off_high = o_high;
 					off_low = o_low;
@@ -199,7 +200,7 @@ namespace services {
 				if (isLight) {
 					auto [o_high, o_low, o_total, rMap, rVect, ntwrk, cpyList, cpyMap] = services::light_work_function_high_comp(
 						copyDeviceWorkloadList, h_proc, off_total, off_low, off_high, copyList, sourceHost, bw_bytes, state_u_list, network, resultMap,
-						resultVect);
+						resultVect, e_queue_size);
 
 					off_high = o_high;
 					off_low = o_low;
@@ -212,7 +213,7 @@ namespace services {
 				} else {
 					auto [o_high, o_low, o_total, rMap, rVect, ntwrk, cpyList, cpyMap] = services::work_function_high_comp(
 						copyDeviceWorkloadList, h_proc, off_total, off_low, off_high, copyList, sourceHost, bw_bytes, state_u_list, network, resultMap,
-						resultVect);
+						resultVect, e_queue_size);
 
 					off_high = o_high;
 					off_low = o_low;
@@ -317,7 +318,7 @@ namespace services {
 	}
 
 
-	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> >
+	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> >
 	profiler_event_loop(std::vector<std::string> state_u_list, std::vector<std::shared_ptr<model::SimEvent> > e_queue, bool isLight) {
 		std::shared_ptr<model::Network> network = std::make_shared<model::Network>();
 		std::map<std::string, std::shared_ptr<model::BaseCompResult> > off_total;
@@ -333,7 +334,7 @@ namespace services {
 
 		uint64_t bw_bytes = 0;
 
-		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > result_map;
+		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > result_map;
 
 		model::TimeSourceSingleton::setTime(event_queue[0]->event_time - std::chrono::milliseconds{1});
 
@@ -361,7 +362,7 @@ namespace services {
 
 			switch (event->type) {
 				case model::SimEvent::Inbound: {
-					auto result = handle_inbound(event, bw_bytes, network, result_map);
+					auto result = handle_inbound(event, bw_bytes, network, result_map, event_queue.size());
 
 
 #ifndef NDEBUG
@@ -380,7 +381,7 @@ namespace services {
 					counter++;
 					std::cout << "Work: W" << counter << " - I" << inbound_counter << std::endl;
 #endif
-					auto results = handle_work(event, network, off_total, off_low, off_high, bw_bytes, result_map, state_u_list, isLight);
+					auto results = handle_work(event, network, off_total, off_low, off_high, bw_bytes, result_map, state_u_list, isLight, static_cast<int>(event_queue.size()));
 					for (const auto result: results) {
 						if (result != nullptr) {
 							auto work_event = std::static_pointer_cast<model::WorkQueueEvent>(result);
@@ -401,9 +402,11 @@ namespace services {
 		return result_map;
 	} // services
 
-	std::string write_profile(web::json::value log) {
+	std::string write_profile(web::json::value log, std::string output_path) {
+		std::cout << "Simulation Complete - Writing results to " << output_path << std::endl;
+
 		auto serialised_result = log.serialize();
-		std::ofstream file(PROFILE_RESULT_FILE);
+		std::ofstream file(output_path);
 		if (file.is_open()) {
 			file << log.serialize();
 			file.close();
@@ -427,13 +430,13 @@ namespace services {
 		}
 
 		auto arr = web::json::value::array(logList);
-		write_profile(arr);
+		write_profile(arr, PROFILE_RESULT_FILE);
 
 		return resultMap;
 	}
 
 	void writeTransformedLoadResults(
-		std::pair<std::map<int, std::pair<float, std::vector<uint64_t> > >, std::map<int, std::pair<float, std::vector<uint64_t> > > > load_transformation) {
+		std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >> load_transformation, std::string output_path) {
 		web::json::value load_map;
 
 		web::json::value high_map;
@@ -446,8 +449,13 @@ namespace services {
 
 			std::vector<web::json::value> latency_json_array;
 
-			for (const auto &latency_value: latency_list)
-				latency_json_array.push_back(web::json::value::number(latency_value));
+			for (const auto &[tw_start, tw_finish, event_queue_size]: latency_list) {
+				auto temp_obj = web::json::value::object();
+				temp_obj["tw_start"] = web::json::value::number(tw_start);
+				temp_obj["tw_finish"] = web::json::value::number(tw_finish);
+				temp_obj["event_queue_size"] = web::json::value::number(event_queue_size);
+				latency_json_array.push_back(temp_obj);
+			}
 
 			local_map["average"] = web::json::value::number(avg);
 			local_map["latency_values"] = web::json::value::array(latency_json_array);
@@ -461,8 +469,13 @@ namespace services {
 
 			std::vector<web::json::value> latency_json_array;
 
-			for (const auto &latency_value: latency_list)
-				latency_json_array.push_back(web::json::value::number(latency_value));
+			for (const auto &[tw_start, tw_finish, event_queue_size]: latency_list) {
+				auto temp_obj = web::json::value::object();
+				temp_obj["tw_start"] = web::json::value::number(tw_start);
+				temp_obj["tw_finish"] = web::json::value::number(tw_finish);
+				temp_obj["event_queue_size"] = web::json::value::number(event_queue_size);
+				latency_json_array.push_back(temp_obj);
+			}
 
 			local_map["average"] = web::json::value::number(avg);
 			local_map["latency_values"] = web::json::value::array(latency_json_array);
@@ -473,35 +486,40 @@ namespace services {
 		load_map["high"] = high_map;
 		load_map["low"] = low_map;
 
-		write_profile(load_map);
+		write_profile(load_map, output_path);
 	}
 
-	std::pair<std::map<int, std::pair<float, std::vector<uint64_t> > >, std::map<int, std::pair<float, std::vector<uint64_t> > > >
+	std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >>
 	profile_data_transform(
-		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type> > profile_map) {
-		std::map<int, std::pair<float, std::vector<uint64_t> > > return_obj_high;
-		std::map<int, std::pair<float, std::vector<uint64_t> > > return_obj_low;
+		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > profile_map) {
+		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > > return_obj_high;
+		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > > return_obj_low;
 
 		for (const auto &[task_result_key, task_result_value]: profile_map) {
-			const auto [task_ingress, task_egress, tw, dnnType] = task_result_value;
+			const auto [task_ingress, task_egress, tw, dnnType, event_queue_size] = task_result_value;
 			auto key = std::max(task_ingress, task_egress);
 
-			std::map<int, std::pair<float, std::vector<uint64_t> > > &obj_to_peruse = (dnnType == enums::dnn_type::high_comp)
+			std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>>> > &obj_to_peruse = (dnnType == enums::dnn_type::high_comp)
 				                                                                          ? return_obj_high
 				                                                                          : return_obj_low;
 			if (!obj_to_peruse.contains(key)) {
-				obj_to_peruse[key] = std::make_pair(0, std::vector<uint64_t>());
+				obj_to_peruse[key] = std::pair(0, std::vector<std::tuple<uint64_t, uint64_t, int>>());
 			}
-			obj_to_peruse[key].second.push_back(
-				std::chrono::duration_cast<std::chrono::milliseconds>(tw->stop - tw->start).count());
-		}
 
+			obj_to_peruse[key].second.emplace_back(
+				(tw->start).time_since_epoch().count(), tw->stop.time_since_epoch().count(), event_queue_size);
+		}
 
 		for (auto &[key, value]: return_obj_high) {
 			auto &[avg, vec] = value;
 
+
 			if (!vec.empty()) {
-				uint64_t sum = std::accumulate(vec.begin(), vec.end(), uint64_t{0});
+				uint64_t sum = 0;
+
+				for (const auto& [tw_start, tw_stop, e_q]: vec)
+					sum += tw_stop - tw_start;
+
 				avg = static_cast<float>(sum) / vec.size();
 			} else {
 				avg = 0.0f;
@@ -512,7 +530,9 @@ namespace services {
 			auto &[avg, vec] = value;
 
 			if (!vec.empty()) {
-				uint64_t sum = std::accumulate(vec.begin(), vec.end(), uint64_t{0});
+				uint64_t sum = 0;
+				for (const auto& [tw_start, tw_stop, e_q]: vec)
+					sum += tw_stop - tw_start;
 				avg = static_cast<float>(sum) / vec.size();
 			} else {
 				avg = 0.0f;
