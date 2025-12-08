@@ -24,7 +24,7 @@
 namespace services {
 	std::shared_ptr<model::SimEvent>
 	handle_inbound(const std::shared_ptr<model::SimEvent> &event, uint64_t &bw_bytes, std::shared_ptr<model::Network> network,
-	               std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > &resultMap, int e_queue_size) {
+	               std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > &resultMap, int e_queue_size) {
 		std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 
 		std::shared_ptr<model::InboundEvent> i_event = std::static_pointer_cast<model::InboundEvent>(event);
@@ -40,14 +40,14 @@ namespace services {
 				auto dnn_id = h_event->dnn_id + "_" + std::to_string(i);
 				dnnIds.push_back(dnn_id);
 
-
 				if (resultMap.find(dnn_id) == resultMap.end()) {
-					auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(),
-					                                              std::chrono::system_clock::now());
+					auto tw = std::make_pair(std::chrono::steady_clock::now(),
+					                                              std::chrono::steady_clock::now());
 					resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::high_comp, e_queue_size);
 				} else {
 					auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[dnn_id];
-					window->start = std::chrono::system_clock::now();
+					window.first = std::chrono::steady_clock::now();
+					window.second = std::chrono::steady_clock::now();
 					resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType, e_queue_size);
 				}
 			}
@@ -75,11 +75,12 @@ namespace services {
 
 			int tasks_in_network = utils::numberOfTasksInNetwork(network);
 			if (resultMap.find(dnn_id) == resultMap.end()) {
-				auto tw = std::make_shared<model::TimeWindow>(std::chrono::system_clock::now(), std::chrono::system_clock::now());
+				auto tw = std::make_pair(std::chrono::steady_clock::now(), std::chrono::steady_clock::now());
 				resultMap[dnn_id] = std::make_tuple(tasks_in_network, -1, tw, enums::dnn_type::low_comp, e_queue_size);
 			} else {
 				auto [beginningTaskCount, finTaskCount, window, dnnType, e_q] = resultMap[dnn_id];
-				window->start = std::chrono::system_clock::now();
+				window.first = std::chrono::steady_clock::now();
+				window.second = std::chrono::steady_clock::now();
 				resultMap[dnn_id] = std::make_tuple(tasks_in_network, finTaskCount, window, dnnType, e_queue_size);
 			}
 
@@ -131,7 +132,7 @@ namespace services {
 	            std::map<std::string, std::shared_ptr<model::BaseCompResult> > &off_total,
 	            std::map<std::string, std::shared_ptr<model::LowCompResult> > &off_low,
 	            std::map<std::string, std::shared_ptr<model::HighCompResult> > &off_high, uint64_t bw_bytes,
-	            std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > &resultMap,
+	            std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > &resultMap,
 	            std::vector<std::string> state_u_list,
 	            bool isLight,
 	            int e_queue_size) {
@@ -318,7 +319,7 @@ namespace services {
 	}
 
 
-	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> >
+	std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> >
 	profiler_event_loop(std::vector<std::string> state_u_list, std::vector<std::shared_ptr<model::SimEvent> > e_queue, bool isLight) {
 		std::shared_ptr<model::Network> network = std::make_shared<model::Network>();
 		std::map<std::string, std::shared_ptr<model::BaseCompResult> > off_total;
@@ -334,7 +335,7 @@ namespace services {
 
 		uint64_t bw_bytes = 0;
 
-		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > result_map;
+		std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > result_map;
 
 		model::TimeSourceSingleton::setTime(event_queue[0]->event_time - std::chrono::milliseconds{1});
 
@@ -436,7 +437,7 @@ namespace services {
 	}
 
 	void writeTransformedLoadResults(
-		std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >> load_transformation, std::string output_path) {
+		std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >> load_transformation, std::string output_path) {
 		web::json::value load_map;
 
 		web::json::value high_map;
@@ -449,8 +450,9 @@ namespace services {
 
 			std::vector<web::json::value> latency_json_array;
 
-			for (const auto &[tw_start, tw_finish, event_queue_size]: latency_list) {
+			for (const auto &[tw_start, tw_finish, event_queue_size, dnn_id]: latency_list) {
 				auto temp_obj = web::json::value::object();
+
 				temp_obj["tw_start"] = web::json::value::number(tw_start);
 				temp_obj["tw_finish"] = web::json::value::number(tw_finish);
 				temp_obj["event_queue_size"] = web::json::value::number(event_queue_size);
@@ -469,7 +471,7 @@ namespace services {
 
 			std::vector<web::json::value> latency_json_array;
 
-			for (const auto &[tw_start, tw_finish, event_queue_size]: latency_list) {
+			for (const auto &[tw_start, tw_finish, event_queue_size, dnn_id]: latency_list) {
 				auto temp_obj = web::json::value::object();
 				temp_obj["tw_start"] = web::json::value::number(tw_start);
 				temp_obj["tw_finish"] = web::json::value::number(tw_finish);
@@ -489,36 +491,37 @@ namespace services {
 		write_profile(load_map, output_path);
 	}
 
-	std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >>
+	std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >>
 	profile_data_transform(
-		std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > profile_map) {
-		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > > return_obj_high;
-		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > > return_obj_low;
+		std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > profile_map) {
+		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > > return_obj_high;
+		std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > > return_obj_low;
+
 
 		for (const auto &[task_result_key, task_result_value]: profile_map) {
 			const auto [task_ingress, task_egress, tw, dnnType, event_queue_size] = task_result_value;
 			auto key = std::max(task_ingress, task_egress);
 
-			std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>>> > &obj_to_peruse = (dnnType == enums::dnn_type::high_comp)
+			std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>>> > &obj_to_peruse = (dnnType == enums::dnn_type::high_comp)
 				                                                                          ? return_obj_high
 				                                                                          : return_obj_low;
 			if (!obj_to_peruse.contains(key)) {
-				obj_to_peruse[key] = std::pair(0, std::vector<std::tuple<uint64_t, uint64_t, int>>());
+				obj_to_peruse[key] = std::pair(0, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>>());
 			}
 
 			obj_to_peruse[key].second.emplace_back(
-				(tw->start).time_since_epoch().count(), tw->stop.time_since_epoch().count(), event_queue_size);
+				(tw.first).time_since_epoch().count(), (tw.second).time_since_epoch().count(), event_queue_size, task_result_key);
 		}
 
 		for (auto &[key, value]: return_obj_high) {
 			auto &[avg, vec] = value;
 
-
 			if (!vec.empty()) {
 				uint64_t sum = 0;
 
-				for (const auto& [tw_start, tw_stop, e_q]: vec)
+				for (const auto& [tw_start, tw_stop, e_q, dnn_id]: vec) {
 					sum += tw_stop - tw_start;
+				}
 
 				avg = static_cast<float>(sum) / vec.size();
 			} else {
@@ -531,7 +534,7 @@ namespace services {
 
 			if (!vec.empty()) {
 				uint64_t sum = 0;
-				for (const auto& [tw_start, tw_stop, e_q]: vec)
+				for (const auto& [tw_start, tw_stop, e_q, dnn_id]: vec)
 					sum += tw_stop - tw_start;
 				avg = static_cast<float>(sum) / vec.size();
 			} else {

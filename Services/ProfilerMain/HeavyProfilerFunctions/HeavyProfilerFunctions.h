@@ -14,8 +14,7 @@
 
 namespace services {
 	std::tuple<std::map<std::string, std::shared_ptr<model::HighCompResult> >, std::map<std::string, std::shared_ptr<model::LowCompResult> >, std::map<
-			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>,
-			enums::dnn_type, int> >
+			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> >
 		, std::vector<std::shared_ptr<model::SimEvent> >, std::shared_ptr<model::Network> >
 	work_function_low_comp(uint64_t bw_bytes, std::shared_ptr<model::Network> network, std::string sourceHost,
 						   std::shared_ptr<model::WorkQueueEvent> w_event,
@@ -23,12 +22,11 @@ namespace services {
 						   std::map<std::string, std::shared_ptr<model::BaseCompResult> > off_total,
 						   std::map<std::string, std::shared_ptr<model::LowCompResult> > off_low,
 						   std::map<std::string, std::shared_ptr<model::HighCompResult> > off_high,
-						   std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > resultMap,
+						   std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > resultMap,
 						   int e_queue_size);
 
 	std::tuple<std::map<std::string, std::shared_ptr<model::HighCompResult> >, std::map<std::string, std::shared_ptr<model::LowCompResult> >, std::map<
-			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>,
-			enums::dnn_type, int> >
+			std::string, std::shared_ptr<model::BaseCompResult> >, std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> >
 		, std::vector<std::shared_ptr<model::SimEvent> >, std::shared_ptr<model::Network>, std::vector<std::shared_ptr<model::NetCommunicationBase> >, std::map<
 			std::string, std::shared_ptr<model::ComputationDevice> > >
 	work_function_high_comp(std::map<std::string, std::shared_ptr<model::ComputationDevice> > copyDeviceWorkloadList,
@@ -39,7 +37,7 @@ namespace services {
 							std::vector<std::shared_ptr<model::NetCommunicationBase> > copyList, std::string sourceHost, uint64_t bw_bytes,
 							std::vector<std::string> state_u_list,
 							std::shared_ptr<model::Network> network,
-							std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int> > resultMap,
+							std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > resultMap,
 							std::vector<std::shared_ptr<model::SimEvent> > resultVect,
 							int e_queue_size);
 } // services

@@ -16,7 +16,7 @@
 int main(int argc, char *argv[]) {
 	int device_count = 100;
 	bool profile_light = true;
-	std::string profiler_light_or_heavy = "false";
+	std::string profiler_light_or_heavy = "true";
 
 	if (argc > 6) {
 		device_count = std::stoi(argv[1]);
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 		device_count = 100;
 		PROFILE_INPUT_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/weighted_4_slice_scheduler_preempt_old_bw.json";
 		RESULTS_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/result_log.json";
-		PROFILE_RESULT_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/heavy_profile_result.json";
+		PROFILE_RESULT_FILE = "/Users/jamiecotter/Documents/Work/PhD/Deadline_Prempt_Controller/light_profile_result.json";
 		profile_light = (profiler_light_or_heavy == "true");
 	}
 

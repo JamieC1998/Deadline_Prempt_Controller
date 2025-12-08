@@ -17,12 +17,12 @@
 
 namespace services {
 
-	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int>>
+	std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> >
 	profiler_event_loop(std::vector<std::string> state_u_list, std::vector<std::shared_ptr<model::SimEvent>> e_queue, bool isLight);
 
 	std::shared_ptr<model::SimEvent>
 	handle_inbound(const std::shared_ptr<model::SimEvent> &event, uint64_t &bw_bytes, std::shared_ptr<model::Network> network,
-				   std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int>> &resultMap, int e_queue_size);
+				   std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > &resultMap, int e_queue_size);
 
 	void handle_outbound(const std::shared_ptr<model::SimEvent> &event);
 
@@ -31,18 +31,18 @@ namespace services {
 				std::map<std::string, std::shared_ptr<model::BaseCompResult>> &off_total,
 				std::map<std::string, std::shared_ptr<model::LowCompResult>> &off_low,
 				std::map<std::string, std::shared_ptr<model::HighCompResult>> &off_high, uint64_t bw_bytes,
-				std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int>> &resultMap,
+				std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > &resultMap,
 				std::vector<std::string> state_u_list, bool isLight, int e_queue_size);
 
 	std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>>
 	printResults(std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type>> resultMap);
 
-	std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >>
+	std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >>
 	profile_data_transform(
-			std::map<std::string, std::tuple<int, int, std::shared_ptr<model::TimeWindow>, enums::dnn_type, int>> profile_map);
+			std::map<std::string, std::tuple<int, int, std::pair<std::chrono::time_point<std::chrono::steady_clock>,std::chrono::time_point<std::chrono::steady_clock>>, enums::dnn_type, int> > profile_map);
 
 	void writeTransformedLoadResults(
-			std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int>> > >> load_transformation, std::string output_path);
+			std::pair<std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >, std::map<int, std::pair<float, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>> > >> load_transformation, std::string output_path);
 } // services
 
 #endif //CONTROLLER_PROFILERMAIN_H
