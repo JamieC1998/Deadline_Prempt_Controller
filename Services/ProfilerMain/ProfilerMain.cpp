@@ -509,8 +509,11 @@ namespace services {
 				obj_to_peruse[key] = std::pair(0, std::vector<std::tuple<uint64_t, uint64_t, int, std::string>>());
 			}
 
+			auto tw_start_conversion_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tw.first.time_since_epoch()).count();
+			auto tw_finish_conversion_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tw.first.time_since_epoch()).count();
+
 			obj_to_peruse[key].second.emplace_back(
-				(tw.first).time_since_epoch().count(), (tw.second).time_since_epoch().count(), event_queue_size, task_result_key);
+				tw_start_conversion_ms, tw_finish_conversion_ms, event_queue_size, task_result_key);
 		}
 
 		for (auto &[key, value]: return_obj_high) {
